@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LogoLoader from "@/components/LogoLoader";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, Eye, FileText, RefreshCw, Save, Trash2, Upload, UserRound, X } from "lucide-react";
+import { ArrowLeft, Download, Eye, FileText, Plus, RefreshCw, Save, Trash2, Upload, UserRound, X } from "lucide-react";
 
 import { supabase, storageSupabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -73,7 +73,7 @@ const startCase = (value: string) =>
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
-type TabKey = "personal" | "capacity" | "status" | "limit" | "retainer";
+type TabKey = "personal" | "capacity" | "status" | "limit" | "retainer" | "score";
 
 const RETAINER_BUCKET = "retainer-contract-documents";
 
@@ -110,7 +110,16 @@ type RetainerDoc = {
   updated_at: string | null;
 };
 
-const NON_EDITABLE_PROFILE_KEYS = new Set(["user_id", "id", "created_at", "updated_at"]);
+type ScoreItem = {
+  id: string;
+  attorney_profile_id: string;
+  title: string;
+  rating: number;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+const NON_EDITABLE_PROFILE_KEYS = new Set(["user_id", "id", "created_at", "updated_at", "profile_score"]);
 
 const PERSONAL_FIELD_CANDIDATES = [
   "full_name",
@@ -216,6 +225,15 @@ const AccountLawyerProfileDetailPage = () => {
   const [uploadNotes, setUploadNotes] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [scoreItems, setScoreItems] = useState<ScoreItem[]>([]);
+  const [scoreLoading, setScoreLoading] = useState(false);
+  const [scoreError, setScoreError] = useState<string | null>(null);
+  const [showAddScoreForm, setShowAddScoreForm] = useState(false);
+  const [newScoreTitle, setNewScoreTitle] = useState("");
+  const [newScoreRating, setNewScoreRating] = useState(5);
+  const [scoreItemToDelete, setScoreItemToDelete] = useState<ScoreItem | null>(null);
+  const [savingScore, setSavingScore] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!userId) return;
@@ -348,6 +366,11 @@ const AccountLawyerProfileDetailPage = () => {
   const stateLimitKey = useMemo(() => {
     return tryPickKey(attorneyProfile ?? null, STATE_LIMIT_FIELD_CANDIDATES) ?? null;
   }, [attorneyProfile]);
+
+  const totalScore = useMemo(() => {
+    const sum = scoreItems.reduce((acc, item) => acc + item.rating, 0);
+    return Math.min(sum, 50);
+  }, [scoreItems]);
 
   const hydrateDrafts = useCallback(() => {
     const profile = attorneyProfile ?? null;
@@ -643,6 +666,39 @@ const AccountLawyerProfileDetailPage = () => {
     if (activeTab === "retainer") void loadRetainerFiles();
   }, [activeTab, loadRetainerFiles]);
 
+  const loadScoreItems = useCallback(async () => {
+    const profileId = attorneyProfile ? String((attorneyProfile as Record<string, unknown>).id ?? "") : "";
+    if (!profileId) return;
+    setScoreLoading(true);
+    setScoreError(null);
+    try {
+      const scoreClient = supabase as unknown as {
+        from: (table: string) => {
+          select: (cols: string) => {
+            eq: (col: string, v: string) => {
+              order: (col: string, opts: { ascending: boolean }) => Promise<{ data: ScoreItem[] | null; error: { message?: string } | null }>;
+            };
+          };
+        };
+      };
+      const { data, error: listError } = await scoreClient
+        .from("attorney_profile_score_items")
+        .select("id,attorney_profile_id,title,rating,created_at,updated_at")
+        .eq("attorney_profile_id", profileId)
+        .order("created_at", { ascending: true });
+      if (listError) throw new Error(listError.message || "Failed to load score items");
+      setScoreItems(data ?? []);
+    } catch (e) {
+      setScoreError(e instanceof Error ? e.message : "Unable to load score items.");
+    } finally {
+      setScoreLoading(false);
+    }
+  }, [attorneyProfile]);
+
+  useEffect(() => {
+    if (activeTab === "score") void loadScoreItems();
+  }, [activeTab, loadScoreItems]);
+
   const downloadRetainerFile = async (doc: RetainerDoc) => {
     const { data, error: dlError } = await storageSupabase.storage
       .from(RETAINER_BUCKET)
@@ -735,6 +791,104 @@ const AccountLawyerProfileDetailPage = () => {
       toast({ title: "Upload failed", description: e instanceof Error ? e.message : "Unable to upload file.", variant: "destructive" });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const syncProfileScore = async (profileId: string, items: ScoreItem[]) => {
+    if (!userId) return;
+    const capped = Math.min(items.reduce((acc, i) => acc + i.rating, 0), 50);
+    const profilesClient = supabase as unknown as {
+      from: (table: string) => {
+        update: (values: Record<string, unknown>) => {
+          eq: (col: string, v: string) => Promise<{ error: { message?: string } | null }>;
+        };
+      };
+    };
+    await profilesClient.from("attorney_profiles").update({ profile_score: capped }).eq("user_id", userId);
+    void profileId;
+  };
+
+  const fetchScoreItems = async (profileId: string): Promise<ScoreItem[]> => {
+    const scoreClient = supabase as unknown as {
+      from: (table: string) => {
+        select: (cols: string) => {
+          eq: (col: string, v: string) => {
+            order: (col: string, opts: { ascending: boolean }) => Promise<{ data: ScoreItem[] | null; error: { message?: string } | null }>;
+          };
+        };
+      };
+    };
+    const { data } = await scoreClient
+      .from("attorney_profile_score_items")
+      .select("id,attorney_profile_id,title,rating,created_at,updated_at")
+      .eq("attorney_profile_id", profileId)
+      .order("created_at", { ascending: true });
+    return data ?? [];
+  };
+
+  const addScoreItem = async () => {
+    const profileId = attorneyProfile ? String((attorneyProfile as Record<string, unknown>).id ?? "") : "";
+    if (!profileId) return;
+    const title = newScoreTitle.trim();
+    if (!title) {
+      toast({ title: "Title required", description: "Please enter a title for this score item.", variant: "destructive" });
+      return;
+    }
+    setSavingScore(true);
+    try {
+      const insertClient = supabase as unknown as {
+        from: (table: string) => {
+          insert: (values: Record<string, unknown>) => Promise<{ error: { message?: string } | null }>;
+        };
+      };
+      const { error: insertError } = await insertClient
+        .from("attorney_profile_score_items")
+        .insert({ attorney_profile_id: profileId, title, rating: newScoreRating });
+      if (insertError) throw new Error(insertError.message || "Failed to add score item");
+
+      const fresh = await fetchScoreItems(profileId);
+      setScoreItems(fresh);
+      await syncProfileScore(profileId, fresh);
+
+      toast({ title: "Added", description: `"${title}" added with rating ${newScoreRating}/10.` });
+      setNewScoreTitle("");
+      setNewScoreRating(5);
+      setShowAddScoreForm(false);
+    } catch (e) {
+      toast({ title: "Failed", description: e instanceof Error ? e.message : "Unable to add score item.", variant: "destructive" });
+    } finally {
+      setSavingScore(false);
+    }
+  };
+
+  const deleteScoreItem = async (item: ScoreItem) => {
+    const profileId = String((attorneyProfile as Record<string, unknown>)?.id ?? "");
+    if (!profileId) return;
+    setScoreItemToDelete(null);
+    setSavingScore(true);
+    try {
+      const deleteClient = supabase as unknown as {
+        from: (table: string) => {
+          delete: () => {
+            eq: (col: string, v: string) => Promise<{ error: { message?: string } | null }>;
+          };
+        };
+      };
+      const { error: delError } = await deleteClient
+        .from("attorney_profile_score_items")
+        .delete()
+        .eq("id", item.id);
+      if (delError) throw new Error(delError.message || "Failed to delete score item");
+
+      const fresh = await fetchScoreItems(profileId);
+      setScoreItems(fresh);
+      await syncProfileScore(profileId, fresh);
+
+      toast({ title: "Deleted", description: `"${item.title}" removed.` });
+    } catch (e) {
+      toast({ title: "Delete failed", description: e instanceof Error ? e.message : "Unable to delete score item.", variant: "destructive" });
+    } finally {
+      setSavingScore(false);
     }
   };
 
@@ -843,7 +997,7 @@ const AccountLawyerProfileDetailPage = () => {
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[0.75fr,1.25fr]">
+      <div className="grid gap-4 xl:grid-cols-[260px,1fr]">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="flex items-center gap-2">
@@ -899,6 +1053,9 @@ const AccountLawyerProfileDetailPage = () => {
                   </TabsTrigger>
                   <TabsTrigger value="retainer" disabled={Boolean(editingTab)}>
                     Retainer Contract
+                  </TabsTrigger>
+                  <TabsTrigger value="score" disabled={Boolean(editingTab)}>
+                    Profile Score
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -1246,6 +1403,181 @@ const AccountLawyerProfileDetailPage = () => {
                       <AlertDialogAction
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         onClick={() => void confirmDeleteRetainerFile()}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </TabsContent>
+              <TabsContent value="score">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-3 mt-4">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">Profile Score</div>
+                    <div className="text-xs text-muted-foreground">
+                      Rate this lawyer across multiple criteria. Each item is scored 0–10, maximum total is 50.
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => void loadScoreItems()} disabled={scoreLoading}>
+                      <RefreshCw className={scoreLoading ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
+                      Refresh
+                    </Button>
+                    {!showAddScoreForm && (
+                      <Button size="sm" onClick={() => setShowAddScoreForm(true)} disabled={!attorneyProfile}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        New Item
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {!attorneyProfile ? (
+                  <div className="mt-4 rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+                    An attorney profile must exist before adding score items.
+                  </div>
+                ) : (
+                  <>
+                    {/* Score summary */}
+                    {!scoreLoading && !scoreError && (
+                      <div className="mt-4 rounded-lg border p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="text-sm font-medium">Total Score</div>
+                          <div className="text-2xl font-bold">
+                            {totalScore}
+                            <span className="text-sm font-normal text-muted-foreground"> / 50</span>
+                          </div>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all duration-300"
+                            style={{ width: `${(totalScore / 50) * 100}%` }}
+                          />
+                        </div>
+                        {totalScore === 50 && (
+                          <div className="mt-2 text-xs text-amber-600">Maximum score of 50 reached.</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Add new item form */}
+                    {showAddScoreForm && (
+                      <div className="mt-4 rounded-lg border bg-muted/10 p-4 space-y-4">
+                        <div>
+                          <div className="text-sm font-medium">Add New Score Item</div>
+                          <div className="text-xs text-muted-foreground">Enter a criterion title and assign a rating from 0 to 10.</div>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-[1fr,140px]">
+                          <div className="space-y-1">
+                            <div className="text-xs font-medium">
+                              Title <span className="text-destructive">*</span>
+                            </div>
+                            <Input
+                              placeholder="e.g. Communication, Settlement Rate…"
+                              value={newScoreTitle}
+                              onChange={(e) => setNewScoreTitle(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <div className="text-xs font-medium">
+                              Rating (0–10) <span className="text-destructive">*</span>
+                            </div>
+                            <Select value={String(newScoreRating)} onValueChange={(v) => setNewScoreRating(Number(v))}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: 11 }, (_, i) => (
+                                  <SelectItem key={i} value={String(i)}>{i}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { setShowAddScoreForm(false); setNewScoreTitle(""); setNewScoreRating(5); }}
+                            disabled={savingScore}
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => void addScoreItem()}
+                            disabled={savingScore || !newScoreTitle.trim()}
+                          >
+                            <Save className="mr-2 h-4 w-4" />
+                            {savingScore ? "Saving…" : "Save Item"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Items list */}
+                    {scoreError ? (
+                      <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+                        {scoreError}
+                      </div>
+                    ) : scoreLoading ? (
+                      <div className="mt-4 rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">Loading score items…</div>
+                    ) : scoreItems.length === 0 ? (
+                      <div className="mt-4 rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+                        No score items yet. Click "New Item" to add the first one.
+                      </div>
+                    ) : (
+                      <div className="mt-4 space-y-0 rounded-lg border divide-y">
+                        <div className="flex items-center justify-between px-4 py-2">
+                          <div className="text-xs font-medium text-muted-foreground">Score Items</div>
+                          <div className="text-xs text-muted-foreground">
+                            {scoreItems.length} item{scoreItems.length !== 1 ? "s" : ""}
+                          </div>
+                        </div>
+                        {scoreItems.map((item) => (
+                          <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-sm font-bold">
+                              {item.rating}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium">{item.title}</div>
+                              <div className="text-xs text-muted-foreground">Rating: {item.rating} / 10</div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setScoreItemToDelete(item)}
+                              disabled={savingScore}
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Delete confirmation */}
+                <AlertDialog open={Boolean(scoreItemToDelete)} onOpenChange={(open) => { if (!open) setScoreItemToDelete(null); }}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Score Item</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete{" "}
+                        <span className="font-medium text-foreground">{scoreItemToDelete?.title}</span>?
+                        This will reduce the profile score by {scoreItemToDelete?.rating} point{scoreItemToDelete?.rating !== 1 ? "s" : ""}.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => scoreItemToDelete && void deleteScoreItem(scoreItemToDelete)}
                       >
                         Delete
                       </AlertDialogAction>
