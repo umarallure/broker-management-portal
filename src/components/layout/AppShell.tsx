@@ -14,6 +14,8 @@ import {
   PanelLeftOpen,
   Menu,
   X,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 import { TbUserShield } from "react-icons/tb";
@@ -29,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { supabase } from '@/integrations/supabase/client';
 
 type NavItem = {
@@ -65,6 +68,7 @@ const AppShell = ({
   autoCollapseSidebarAfterMs,
 }: AppShellProps) => {
   const { user, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const locationState = (location.state as { activeNav?: string } | null) || null;
@@ -471,6 +475,22 @@ const AppShell = ({
                 <h1 className="text-xs sm:text-sm font-semibold text-foreground truncate">{title}</h1>
               </div>
 
+              <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                onClick={toggleTheme}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -502,6 +522,7 @@ const AppShell = ({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </div>
             </div>
           </header>
 
