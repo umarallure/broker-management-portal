@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { AgentActivityDashboard } from "@/components/AgentActivityDashboard";
 import ReportsPage from "./pages/Reports";
 import Auth from "./pages/Auth";
+import LegalPage from "./pages/LegalPage";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import CenterLeadPortal from "./pages/CenterLeadPortal";
@@ -71,6 +72,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Auth />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/terms" element={<LegalPage type="terms" />} />
+            <Route path="/privacy-policy" element={<LegalPage type="privacy" />} />
             <Route path="/center-auth" element={<Navigate to="/auth" replace />} />
             <Route 
               path="/dashboard" 
