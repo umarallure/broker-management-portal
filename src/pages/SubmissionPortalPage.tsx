@@ -592,10 +592,10 @@ const SubmissionPortalPage = () => {
       const lawyerPortalRes = await lawyerPortalQ;
 
       if (lawyerPortalRes.error) {
-        console.error('Error fetching lawyer portal leads:', lawyerPortalRes.error);
+        console.error('Error fetching broker portal leads:', lawyerPortalRes.error);
         toast({
           title: 'Error',
-          description: 'Failed to fetch lawyer portal data',
+          description: 'Failed to fetch broker portal data',
           variant: 'destructive',
         });
         return;
@@ -884,7 +884,7 @@ const SubmissionPortalPage = () => {
   }, [editPipeline, editStage, reasonsByParent]);
 
   if (loading) {
-    return <LogoLoader page label="Loading lawyer portal..." />;
+    return <LogoLoader page label="Loading broker portal..." />;
   }
 
   const handleView = (row: SubmissionPortalRow) => {
@@ -1427,7 +1427,7 @@ const SubmissionPortalPage = () => {
                                       <span className="font-medium">Onboarding Agent:</span> {closer}
                                     </div>
                                     <div>
-                                      <span className="font-medium">Attorney:</span> {attorney}
+                                      <span className="font-medium">Broker:</span> {attorney}
                                     </div>
                                   </div>
                                 </CardContent>
@@ -1505,7 +1505,7 @@ const SubmissionPortalPage = () => {
                   <SelectValue placeholder="Select pipeline" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="lawyer_portal">Lawyer Portal</SelectItem>
+                  <SelectItem value="lawyer_portal">Broker Portal</SelectItem>
                   <SelectItem value="cold_call_pipeline">Marketing Pipeline</SelectItem>
                 </SelectContent>
               </Select>

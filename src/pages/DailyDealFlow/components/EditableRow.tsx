@@ -85,6 +85,12 @@ const statusOptions = Array.from(
   ])
 );
 
+const brokerFacingStageLabel = (value: string) => {
+  if (value === "Attorney Submission") return "Broker Submission";
+  if (value === "Attorney Decision") return "Broker Decision";
+  return value;
+};
+
 const callResultOptions = [
   "Qualified", "Underwriting", "Not Qualified"
 ];
@@ -557,7 +563,7 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
                   </SelectTrigger>
                   <SelectContent>
                     {leadVendors.map(option => (
-                      <SelectItem key={option} value={option}>{option}</SelectItem>
+                      <SelectItem key={option} value={option}>{brokerFacingStageLabel(option)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -603,7 +609,7 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
                   </SelectTrigger>
                   <SelectContent>
                     {agentOptions.map(option => (
-                      <SelectItem key={option} value={option}>{option}</SelectItem>
+                      <SelectItem key={option} value={option}>{brokerFacingStageLabel(option)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -672,7 +678,7 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
                               setStatusOpen(false);
                             }}
                           >
-                            {option}
+                            {brokerFacingStageLabel(option)}
                           </button>
                         ))
                       )}
@@ -1007,7 +1013,7 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
                           setStatusOpen(false);
                         }}
                       >
-                        {option}
+                        {brokerFacingStageLabel(option)}
                       </button>
                     ))
                   )}

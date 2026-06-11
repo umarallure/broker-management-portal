@@ -40,8 +40,14 @@ const LOGIN_ALLOWED_TABLES = new Set([
   'marketing_team',
   'lawyer_lead_notes',
   'attorney_profiles',
+  'broker_profiles',
   'retainer_contract_documents',
   'attorney_profile_score_items',
+  'team_members',
+  'broker_team_members',
+  'centers',
+  'closer_tasks',
+  'closer_task_notes',
 ]);
 
 const createMockQueryBuilder = () => {

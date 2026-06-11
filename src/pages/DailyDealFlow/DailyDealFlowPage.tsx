@@ -10,12 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, MessageCircle, PhoneCall, Users, Search, Loader2 } from "lucide-react";
+import { Facebook, Instagram, Linkedin, Users, Search, Loader2 } from "lucide-react";
 import LogoLoader from "@/components/LogoLoader";
 import { fetchInstantlyOverview, type InstantlyOverview } from "@/lib/instantly";
 import { format, startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths } from "date-fns";
 
-type OutreachMethod = "Email (Instantly)" | "DM (FlowChat)" | "Cold Call" | "Networking";
+type OutreachMethod = "Instagram (FlowChat)" | "Linkedin (FlowChat)" | "Facebook (FlowChat)" | "Networking";
 
 type DateRangeOption = "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month" | "custom";
 
@@ -59,7 +59,7 @@ const getDateBounds = (range: DateRangeOption, customStart?: string, customEnd?:
 };
 
 type StaticOutreachMetrics = {
-  method: Exclude<OutreachMethod, "Email (Instantly)">;
+  method: Exclude<OutreachMethod, "Instagram (FlowChat)">;
   output: number;
   conversion: number;
   conversionLabel: string;
@@ -67,21 +67,21 @@ type StaticOutreachMetrics = {
 };
 
 type MethodMeta = {
-  icon: typeof Mail;
+  icon: typeof Instagram;
   accentClass: string;
   badgeClass: string;
 };
 
 const staticMetrics: StaticOutreachMetrics[] = [
-  { method: "DM (FlowChat)", output: 0, conversion: 0, conversionLabel: "Green Flags", goalOutput: 120 },
-  { method: "Cold Call", output: 0, conversion: 0, conversionLabel: "Connected", goalOutput: 80 },
+  { method: "Linkedin (FlowChat)", output: 0, conversion: 0, conversionLabel: "Green Flags", goalOutput: 120 },
+  { method: "Facebook (FlowChat)", output: 0, conversion: 0, conversionLabel: "Connected", goalOutput: 80 },
   { method: "Networking", output: 0, conversion: 0, conversionLabel: "Green Flags", goalOutput: 10 },
 ];
 
 const metaByMethod: Record<OutreachMethod, MethodMeta> = {
-  "Email (Instantly)": { icon: Mail, accentClass: "bg-blue-500", badgeClass: "bg-blue-50 text-blue-700 border-blue-200" },
-  "DM (FlowChat)": { icon: MessageCircle, accentClass: "bg-violet-500", badgeClass: "bg-violet-50 text-violet-700 border-violet-200" },
-  "Cold Call": { icon: PhoneCall, accentClass: "bg-amber-500", badgeClass: "bg-amber-50 text-amber-700 border-amber-200" },
+  "Instagram (FlowChat)": { icon: Instagram, accentClass: "bg-pink-500", badgeClass: "bg-pink-50 text-pink-700 border-pink-200" },
+  "Linkedin (FlowChat)": { icon: Linkedin, accentClass: "bg-blue-600", badgeClass: "bg-blue-50 text-blue-700 border-blue-200" },
+  "Facebook (FlowChat)": { icon: Facebook, accentClass: "bg-sky-600", badgeClass: "bg-sky-50 text-sky-700 border-sky-200" },
   "Networking": { icon: Users, accentClass: "bg-emerald-500", badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200" },
 };
 
@@ -107,7 +107,7 @@ const pct = (num: number, denom: number) =>
   denom > 0 ? ((num / denom) * 100).toFixed(1) + "%" : "—";
 
 const InstantlyEmailCard = ({ data, loading, dateLabel }: InstantlyCardProps) => {
-  const meta = metaByMethod["Email (Instantly)"];
+  const meta = metaByMethod["Instagram (FlowChat)"];
   const Icon = meta.icon;
 
   const sent = data?.emails_sent_count ?? 0;
@@ -134,7 +134,7 @@ const InstantlyEmailCard = ({ data, loading, dateLabel }: InstantlyCardProps) =>
               <Icon className="h-4 w-4 text-foreground" />
             </div>
             <div>
-              <div className="text-sm font-semibold">Email (Instantly)</div>
+              <div className="text-sm font-semibold">Instagram (FlowChat)</div>
               <div className="text-xs text-muted-foreground">{dateLabel} scorecard</div>
             </div>
           </div>
@@ -149,7 +149,7 @@ const InstantlyEmailCard = ({ data, loading, dateLabel }: InstantlyCardProps) =>
         {/* Primary: Sent + Reply side by side */}
         <div className="mt-5 grid grid-cols-2 gap-4">
           <div className="rounded-lg border bg-card p-3">
-            <div className="text-[11px] text-muted-foreground">Emails Sent</div>
+            <div className="text-[11px] text-muted-foreground">Output</div>
             <div className="mt-1 text-3xl font-semibold tracking-tight">
               {loading ? "—" : sent.toLocaleString()}
             </div>
@@ -219,7 +219,7 @@ const InstantlyEmailCard = ({ data, loading, dateLabel }: InstantlyCardProps) =>
   );
 };
 
-// ── Static outreach card (DM / Cold Call / Networking) ───────────────────────
+// ── Static outreach card (Linkedin / Facebook / Networking) ──────────────────
 
 type StaticCardProps = { m: StaticOutreachMetrics };
 
@@ -315,11 +315,11 @@ const DailyDealFlowPage = () => {
     return () => { cancelled = true; };
   }, [dateRange, customStart, customEnd]);
 
-  const allMethods: OutreachMethod[] = ["Email (Instantly)", "DM (FlowChat)", "Cold Call", "Networking"];
+  const allMethods: OutreachMethod[] = ["Instagram (FlowChat)", "Linkedin (FlowChat)", "Facebook (FlowChat)", "Networking"];
 
   const showEmail = useMemo(() => {
-    if (platformFilter !== "all" && platformFilter !== "Email (Instantly)") return false;
-    if (searchTerm.trim() && !"email (instantly)".includes(searchTerm.trim().toLowerCase())) return false;
+    if (platformFilter !== "all" && platformFilter !== "Instagram (FlowChat)") return false;
+    if (searchTerm.trim() && !"instagram (flowchat)".includes(searchTerm.trim().toLowerCase())) return false;
     return true;
   }, [platformFilter, searchTerm]);
 

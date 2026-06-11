@@ -270,7 +270,7 @@ const OrderFulfillmentPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Lawyer</TableHead>
+                <TableHead>Broker</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Target States</TableHead>
                 <TableHead>Filled</TableHead>

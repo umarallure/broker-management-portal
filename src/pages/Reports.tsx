@@ -36,6 +36,11 @@ interface TeamStats {
   active_agents: number;
 }
 
+type BrokerPortalSubmission = {
+  verification_logs?: string | null;
+  status?: string | null;
+};
+
 export const ReportsPage = () => {
   const [bufferStats, setBufferStats] = useState<AgentStats[]>([]);
   const [licensedStats, setLicensedStats] = useState<AgentStats[]>([]);
@@ -206,8 +211,12 @@ export const ReportsPage = () => {
     }
   };
 
-  // Analyze agent performance from lawyer portal data
-  const analyzeAgentPerformance = (transfers: any[], submissions: any[], callLogs: any[]) => {
+  // Analyze agent performance from broker portal data
+  const analyzeAgentPerformance = (
+    _transfers: unknown[],
+    submissions: BrokerPortalSubmission[],
+    _callLogs: unknown[],
+  ) => {
     // Agent lists for validation
     const licensedAccountOptions = [
       "Claudia",

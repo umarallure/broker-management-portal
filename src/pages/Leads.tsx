@@ -1,7 +1,7 @@
-import Retainers from "./Retainers";
+import BrokerContactsPage from './BrokerContactsPage';
 
 const Leads = () => {
-  return <Retainers />;
+  return <BrokerContactsPage />;
 };
 
 export default Leads;

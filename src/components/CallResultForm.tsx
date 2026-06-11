@@ -21,7 +21,6 @@ import { AppFixTaskTypeSelector } from "@/components/AppFixTaskTypeSelector";
 import { useCenters } from "@/hooks/useCenters";
 import { useAttorneys } from "@/hooks/useAttorneys";
 import { fetchLicensedCloserOptions } from "@/lib/agentOptions";
-import type { Database } from "@/integrations/supabase/types";
 
 interface CallResultFormProps {
   submissionId: string;
@@ -31,8 +30,6 @@ interface CallResultFormProps {
   verificationSessionId?: string;
   verifiedFieldValues?: Record<string, string>;
 }
-
-type LeadsUpdate = Database["public"]["Tables"]["leads"]["Update"];
 
 const statusOptions = [
   "Incomplete Transfer",
@@ -136,6 +133,14 @@ const dqReasonOptions = [
   "Own Fault",
   "Other"
 ];
+
+const brokerFacingLabelMap: Record<string, string> = {
+  "Attorney Submission": "Broker Submission",
+  "Attorney Decision": "Broker Decision",
+  "Already has Attorney Involved": "Already has Legal Representation",
+};
+
+const getBrokerFacingLabel = (value: string) => brokerFacingLabelMap[value] ?? value;
 
 const needsCallbackReasonOptions = [
   "Banking information invalid",
@@ -370,11 +375,11 @@ const generateSubmittedApplicationNotes = (
     }
     
     if (accidentInfo.priorAttorneyInvolved !== null) {
-      accidentParts.push(`Prior Attorney Involved: ${accidentInfo.priorAttorneyInvolved ? 'Yes' : 'No'}`);
+      accidentParts.push(`Prior Legal Representation: ${accidentInfo.priorAttorneyInvolved ? 'Yes' : 'No'}`);
     }
     
     if (accidentInfo.priorAttorneyDetails) {
-      accidentParts.push(`Attorney Details: ${accidentInfo.priorAttorneyDetails}`);
+      accidentParts.push(`Representation Details: ${accidentInfo.priorAttorneyDetails}`);
     }
     
     if (accidentParts.length > 0) {
@@ -1117,7 +1122,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
     if (error) throw error;
     if (!items || items.length === 0) return;
 
-    const updates: LeadsUpdate = {};
+    const updates: Record<string, string | number | boolean | null> = {};
 
     for (const item of items) {
       if (!item.is_verified || !item.is_modified) continue;
@@ -1126,22 +1131,22 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
 
       const raw = (item.verified_value ?? item.original_value ?? "").toString().trim();
       if (!raw.length) {
-        (updates as any)[fieldName] = null;
+        updates[fieldName] = null;
         continue;
       }
 
       if (booleanFields.has(fieldName)) {
-        (updates as any)[fieldName] = raw.toLowerCase() === "true";
+        updates[fieldName] = raw.toLowerCase() === "true";
         continue;
       }
 
       if (numberFields.has(fieldName)) {
         const parsed = Number(raw);
-        (updates as any)[fieldName] = Number.isFinite(parsed) ? parsed : null;
+        updates[fieldName] = Number.isFinite(parsed) ? parsed : null;
         continue;
       }
 
-      (updates as any)[fieldName] = raw;
+      updates[fieldName] = raw;
     }
 
     if (Object.keys(updates).length === 0) return;
@@ -1575,12 +1580,13 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
       }
       try {
         await syncModifiedVerifiedFieldsToLeads();
-      } catch (leadSyncError: any) {
+      } catch (leadSyncError) {
+        const message = leadSyncError instanceof Error ? leadSyncError.message : null;
         console.error("Failed to sync verification edits to leads:", leadSyncError);
         toast({
           title: "Warning",
           description:
-            leadSyncError?.message ||
+            message ||
             "Call result saved, but updating the lead record failed. Please try saving again.",
           variant: "destructive",
         });
@@ -2089,7 +2095,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                   </div>
 
                   <div>
-                    <Label>Prior Attorney Involved</Label>
+                    <Label>Prior Legal Representation</Label>
                     <div className="flex gap-2">
                       <Button
                         type="button"
@@ -2112,7 +2118,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
 
                   {priorAttorneyInvolved === true && (
                     <div className="md:col-span-2">
-                      <Label htmlFor="priorAttorneyDetails">Attorney Details</Label>
+                      <Label htmlFor="priorAttorneyDetails">Representation Details</Label>
                       <Textarea
                         id="priorAttorneyDetails"
                         value={priorAttorneyDetails}
@@ -2183,7 +2189,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                   <SelectContent>
                     {statusOptions.map((option) => (
                       <SelectItem key={option} value={option}>
-                        {option}
+                          {getBrokerFacingLabel(option)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -2207,12 +2213,12 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                   </Label>
                   <Select value={statusReason} onValueChange={handleStatusReasonChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder={`Select reason for ${status.toLowerCase()}`} />
+                      <SelectValue placeholder={`Select reason for ${getBrokerFacingLabel(status).toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent>
                       {currentReasonOptions.map((reason) => (
                         <SelectItem key={reason} value={reason}>
-                          {reason}
+                          {getBrokerFacingLabel(reason)}
                         </SelectItem>
                       ))}
                     </SelectContent>

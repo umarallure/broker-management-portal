@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "@/hooks/useTheme";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { AgentActivityDashboard } from "@/components/AgentActivityDashboard";
@@ -19,7 +20,7 @@ import CallResultJourney from "./pages/CallResultJourney";
 import NewCallback from "./pages/NewCallback";
 import NewLawFirm from "./pages/NewLawFirm";
 import DailyDealFlowPage from "./pages/DailyDealFlow/DailyDealFlowPage";
-import LawyerLeadDetailsPage from "@/pages/LawyerLeadDetailsPage";
+import BrokerLeadDetailsPage from "@/pages/BrokerLeadDetailsPage";
 import LeadDetailsPage from "./pages/LeadDetails/LeadDetailsPage";
 import TransferPortalPage from "./pages/TransferPortalPage";
 import SubmissionPortalPage from "./pages/SubmissionPortalPage";
@@ -34,18 +35,17 @@ import { AgentEligibilityPage } from "./pages/AgentEligibilityPage";
 import BufferPerformanceReport from "./pages/BufferPerformanceReport";
 import LicensedAgentPerformanceReport from "./pages/LicensedAgentPerformanceReport";
 import LicensedAgentInbox from "./pages/LicensedAgentInbox";
+import SlackPage from "./pages/SlackPage";
 import TaskDetailView from "./pages/TaskDetailView";
 import RetentionTasksView from "./pages/RetentionTasksView";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import UserManagement from "./pages/UserManagement";
 import MarketingTeamPage from "./pages/MarketingTeamPage";
 import LeadAssignmentPage from "./pages/LeadAssignmentPage";
-import AccountOrderManagementPage from "./pages/AccountOrderManagementPage";
-import QuickActionsPage from "./pages/QuickActionsPage";
-import OnboardingManagementPage from "./pages/OnboardingManagementPage";
-import AccountOrderDetailPage from "./pages/AccountOrderDetailPage";
-import AccountLawyerProfilesPage from "./pages/AccountLawyerProfilesPage";
-import AccountLawyerProfileDetailPage from "./pages/AccountLawyerProfileDetailPage";
+import SectionPlaceholderPage from "./pages/SectionPlaceholderPage";
+import OnboardingPortalPage from "./pages/OnboardingPortalPage";
+import BrokerManagementPage from "./pages/BrokerManagementPage";
+import TaskManagementPage from "./pages/TaskManagement";
 import AppShell from "@/components/layout/AppShell";
 import LogoLoader from "@/components/LogoLoader";
 import { Navigate } from "react-router-dom";
@@ -61,6 +61,7 @@ const AuthAwareFallbackRoute = () => {
 };
 
 const App = () => (
+  <ThemeProvider>
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
@@ -84,7 +85,7 @@ const App = () => (
               path="/leads" 
               element={
                 <ProtectedRoute>
-                  <AppShell title="Lawyer Contacts">
+                  <AppShell title="Broker Contacts">
                     <Leads />
                   </AppShell>
                 </ProtectedRoute>
@@ -145,77 +146,22 @@ const App = () => (
             />
 
             <Route
+              path="/onboarding-portal"
+              element={
+                <ProtectedRoute>
+                  <AppShell title="Onboarding Portal">
+                    <OnboardingPortalPage />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/marketing-team"
               element={
                 <ProtectedRoute>
                   <AppShell title="Marketing Team">
                     <MarketingTeamPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/account-management/orders"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Account Management">
-                    <AccountOrderManagementPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/account-management/orders/:orderId"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Account Management">
-                    <AccountOrderDetailPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/account-management/quick-actions"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Quick Actions">
-                    <QuickActionsPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/account-management/onboarding"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Onboarding Management">
-                    <OnboardingManagementPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/account-management/lawyer-profiles"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Lawyer Profile Management">
-                    <AccountLawyerProfilesPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/account-management/lawyer-profiles/:userId"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Lawyer Profile Management">
-                    <AccountLawyerProfileDetailPage />
                   </AppShell>
                 </ProtectedRoute>
               }
@@ -285,7 +231,7 @@ const App = () => (
               path="/add-lead" 
               element={
                 <ProtectedRoute>
-                  <AppShell title="Add Lawyer">
+                  <AppShell title="Add Broker">
                     <NewCallback />
                   </AppShell>
                 </ProtectedRoute>
@@ -315,7 +261,7 @@ const App = () => (
               path="/leads/:submissionId" 
               element={
                 <ProtectedRoute>
-                  <AppShell title="Lawyer Details">
+                  <AppShell title="Broker Details">
                     <LeadDetailsPage />
                   </AppShell>
                 </ProtectedRoute>
@@ -345,16 +291,64 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
+            <Route
+              path="/slack"
+              element={
+                <ProtectedRoute>
+                  <AppShell title="Slack">
+                    <SlackPage />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/hubspot"
+              element={
+                <ProtectedRoute>
+                  <AppShell title="Hubspot">
+                    <SectionPlaceholderPage sectionName="Hubspot" />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/broker-management"
+              element={
+                <ProtectedRoute>
+                  <AppShell title="Broker Management">
+                    <BrokerManagementPage />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/lawyer-management"
+              element={
+                <ProtectedRoute>
+                  <Navigate to="/broker-management" replace />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/task-management"
+              element={
+                <ProtectedRoute>
+                  <AppShell title="Task Management">
+                    <TaskManagementPage />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
             <Route 
               path="/lead-detail/:id" 
               element={
                 <ProtectedRoute>
                   <AppShell
-                    title="Lawyer Lead Details"
+                    title="Broker Lead Details"
                     defaultSidebarCollapsed
                     autoCollapseSidebarAfterMs={2000}
                   >
-                    <LawyerLeadDetailsPage />
+                    <BrokerLeadDetailsPage />
                   </AppShell>
                 </ProtectedRoute>
               } 
@@ -363,7 +357,7 @@ const App = () => (
               path="/transfer-portal" 
               element={
                 <ProtectedRoute>
-                  <AppShell title="Marketing Opportunitues">
+                  <AppShell title="Marketing Opportunities">
                     <TransferPortalPage />
                   </AppShell>
                 </ProtectedRoute>
@@ -373,7 +367,7 @@ const App = () => (
               path="/submission-portal" 
               element={
                 <ProtectedRoute>
-                  <AppShell title="Lawyer Portal">
+                  <AppShell title="Broker Portal">
                     <SubmissionPortalPage />
                   </AppShell>
                 </ProtectedRoute>
@@ -385,6 +379,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AppShell title="Agent Reports & Logs">
                     <ReportsPage />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/product-guide"
+              element={
+                <ProtectedRoute>
+                  <AppShell title="Product Guide">
+                    <SectionPlaceholderPage sectionName="Product Guide" />
                   </AppShell>
                 </ProtectedRoute>
               }
@@ -506,6 +510,7 @@ const App = () => (
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

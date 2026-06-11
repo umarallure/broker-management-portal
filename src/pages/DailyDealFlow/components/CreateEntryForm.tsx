@@ -320,15 +320,15 @@ export const CreateEntryForm = ({ onSuccess }: CreateEntryFormProps) => {
                 </Select>
               </div>
 
-              {/* Assign Attorney */}
+              {/* Assign Broker */}
               <div>
-                <label className="text-sm font-medium">Assign Attorney</label>
+                <label className="text-sm font-medium">Assign Broker</label>
                 <Select
                   value={formData.assigned_attorney_id}
                   onValueChange={(value) => updateField('assigned_attorney_id', value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={attorneysLoading ? "Loading attorneys..." : "Select attorney"} />
+                    <SelectValue placeholder={attorneysLoading ? "Loading brokers..." : "Select broker"} />
                   </SelectTrigger>
                   <SelectContent>
                     {attorneys.map((a) => (

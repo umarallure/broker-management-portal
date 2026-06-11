@@ -590,14 +590,14 @@ const DailyDealFlowLeadDetailsPage = () => {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Assigned Attorney">
+                  <Field label="Assigned Broker">
                     <Select
                       value={form.assigned_attorney_id || "__NONE__"}
                       onValueChange={setAssignedAttorneyId}
                       disabled={disabled}
                     >
                       <SelectTrigger className={inputCls}>
-                        <SelectValue placeholder={attorneysLoading ? "Loading attorneys…" : "Select attorney"} />
+                        <SelectValue placeholder={attorneysLoading ? "Loading brokers..." : "Select broker"} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__NONE__">Unassigned</SelectItem>
@@ -726,7 +726,7 @@ const DailyDealFlowLeadDetailsPage = () => {
                       disabled={disabled}
                     />
                   </Field>
-                  <Field label="Prior Attorney Involved">
+                  <Field label="Prior Legal Representation">
                     <div className="flex items-center gap-2 h-9">
                       <Switch
                         checked={Boolean(form.prior_attorney_involved)}
@@ -763,7 +763,7 @@ const DailyDealFlowLeadDetailsPage = () => {
                       className="min-h-[120px]"
                     />
                   </Field>
-                  <Field label="Prior Attorney Details">
+                  <Field label="Prior Representation Details">
                     <Textarea
                       value={form.prior_attorney_details ?? ""}
                       onChange={(e) => setString("prior_attorney_details", e.target.value)}

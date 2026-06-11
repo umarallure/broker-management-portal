@@ -1,10 +1,13 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  ChevronDown,
-  ChevronRight,
+  BookOpen,
+  BriefcaseBusiness,
+  Building2,
+  ClipboardList,
   Grid3X3,
   LayoutDashboard,
+  MessageSquare,
   Package,
   Users,
   LogOut,
@@ -14,9 +17,9 @@ import {
   PanelLeftOpen,
   Menu,
   X,
+  Sun,
+  Moon,
 } from 'lucide-react';
-
-import { TbUserShield } from "react-icons/tb";
 
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -29,21 +32,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { supabase } from '@/integrations/supabase/client';
 
 type NavItem = {
   label: string;
   icon: ReactNode;
-  to?: string;
+  to: string;
   end?: boolean;
   show?: boolean;
-  groupKey?: string;
-  children?: Array<{
-    label: string;
-    to: string;
-    end?: boolean;
-    show?: boolean;
-  }>;
 };
 
 const linkBaseClass =
@@ -65,6 +62,7 @@ const AppShell = ({
   autoCollapseSidebarAfterMs,
 }: AppShellProps) => {
   const { user, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const locationState = (location.state as { activeNav?: string } | null) || null;
@@ -92,9 +90,6 @@ const AppShell = ({
   });
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    account_management: location.pathname.startsWith('/account-management'),
-  });
 
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
@@ -155,12 +150,6 @@ const AppShell = ({
   }, [isDailyDealFlowRoute, location.pathname]);
 
   useEffect(() => {
-    if (location.pathname.startsWith('/account-management')) {
-      setExpandedGroups((prev) => ({ ...prev, account_management: true }));
-    }
-  }, [location.pathname]);
-
-  useEffect(() => {
     // If a route forces a default (e.g., Daily Outreach Report), apply it immediately.
     if (defaultSidebarCollapsed === undefined) return;
     if (!isDailyDealFlowRoute) return;
@@ -213,6 +202,57 @@ const AppShell = ({
         icon: <LayoutDashboard className="h-4 w-4 text-current" />,
       },
       {
+        label: 'Onboarding Portal',
+        to: '/onboarding-portal',
+        icon: <Package className="h-4 w-4 text-current" />,
+      },
+      {
+        label: 'Broker Contacts',
+        to: '/leads',
+        icon: <Users className="h-4 w-4 text-current" />,
+        end: true,
+      },
+      {
+        label: 'Marketing Opportunities',
+        to: '/transfer-portal',
+        icon: <Eye className="h-4 w-4 text-current" />,
+      },
+      {
+        label: 'Broker Portal',
+        to: '/submission-portal',
+        icon: <CheckCircle className="h-4 w-4 text-current" />,
+      },
+      {
+        label: 'Slack',
+        to: '/slack',
+        icon: <MessageSquare className="h-4 w-4 text-current" />,
+      },
+      {
+        label: 'Hubspot',
+        to: '/hubspot',
+        icon: <Building2 className="h-4 w-4 text-current" />,
+      },
+      {
+        label: 'Broker Management',
+        to: '/broker-management',
+        icon: <BriefcaseBusiness className="h-4 w-4 text-current" />,
+      },
+      {
+        label: 'Task Management',
+        to: '/task-management',
+        icon: <ClipboardList className="h-4 w-4 text-current" />,
+      },
+      {
+        label: 'Daily Outreach Report',
+        to: '/daily-deal-flow',
+        icon: <Grid3X3 className="h-4 w-4 text-current" />,
+      },
+      {
+        label: 'Product Guide',
+        to: '/product-guide',
+        icon: <BookOpen className="h-4 w-4 text-current" />,
+      },
+      {
         label: 'Marketing Team',
         to: '/marketing-team',
         icon: <Users className="h-4 w-4 text-current" />,
@@ -223,50 +263,6 @@ const AppShell = ({
         to: '/lead-assignment',
         icon: <Users className="h-4 w-4 text-current" />,
         show: isSuperAdmin,
-      },
-      {
-        label: 'Lawyer Contacts',
-        to: '/leads',
-        icon: <Users className="h-4 w-4 text-current" />,
-        end: true,
-      },
-      {
-        label: 'Marketing Opportunitues',
-        to: '/transfer-portal',
-        icon: <Eye className="h-4 w-4 text-current" />,
-      },
-      {
-        label: 'Lawyer Portal',
-        to: '/submission-portal',
-        icon: <CheckCircle className="h-4 w-4 text-current" />,
-      },
-      {
-        label: 'Daily Outreach Report',
-        to: '/daily-deal-flow',
-        icon: <Grid3X3 className="h-4 w-4 text-current" />,
-      },
-      {
-        label: 'Account Management',
-        icon: <TbUserShield className="h-4 w-4 text-current" />,
-        groupKey: 'account_management',
-        children: [
-          {
-            label: 'Quick Actions',
-            to: '/account-management/quick-actions',
-          },
-          {
-            label: 'Order Management',
-            to: '/account-management/orders',
-          },
-          {
-            label: 'Onboarding Management',
-            to: '/account-management/onboarding',
-          },
-          {
-            label: 'Lawyer Profile Management',
-            to: '/account-management/lawyer-profiles',
-          },
-        ],
       },
     ];
 
@@ -324,7 +320,7 @@ const AppShell = ({
           >
             <img
               src={isSidebarCollapsed ? '/assets/logo-collapse.png' : '/assets/logo.png'}
-              alt="Lawyer Onboarding Portal"
+              alt="Broker Management Portal"
               className={isSidebarCollapsed ? "h-10 w-auto max-w-full" : "h-7 w-auto"}
             />
           </div>
@@ -333,84 +329,10 @@ const AppShell = ({
             className="px-2 py-3 space-y-1 flex-1 overflow-y-auto"
           >
             {navItems.map((item) => {
-              const visibleChildren = (item.children || []).filter((child) => child.show !== false);
-              const hasChildren = visibleChildren.length > 0;
-              const isGroupOpen = item.groupKey ? Boolean(expandedGroups[item.groupKey]) : false;
-              const hasActiveChild = visibleChildren.some((child) => isNavItemActive(child.to, child.end));
-              const primaryTo = item.to || visibleChildren[0]?.to;
-
-              if (hasChildren && isSidebarCollapsed && primaryTo) {
-                return (
-                  <NavLink
-                    key={item.groupKey || item.label}
-                    to={primaryTo}
-                    className={() =>
-                      `${linkBaseClass} justify-center px-0 ${
-                        hasActiveChild
-                          ? "bg-primary/10 text-primary border-primary/20"
-                          : "text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/20"
-                      }`
-                    }
-                    title={item.label}
-                  >
-                    {item.icon}
-                  </NavLink>
-                );
-              }
-
-              if (hasChildren) {
-                return (
-                  <div key={item.groupKey || item.label} className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedGroups((prev) => ({
-                          ...prev,
-                          [item.groupKey || item.label]: !prev[item.groupKey || item.label],
-                        }))
-                      }
-                      className={`${linkBaseClass} w-full justify-between text-left ${
-                        hasActiveChild
-                          ? "bg-primary/10 text-primary border-primary/20"
-                          : "text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/20"
-                      }`}
-                    >
-                      <span className="flex items-center gap-2 min-w-0">
-                        {item.icon}
-                        <span className="truncate">{item.label}</span>
-                      </span>
-                      {isGroupOpen ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-                    </button>
-
-                    {isGroupOpen ? (
-                      <div className="ml-4 space-y-1 border-l border-sidebar-border pl-3">
-                        {visibleChildren.map((child) => (
-                          <NavLink
-                            key={child.to}
-                            to={child.to}
-                            end={child.end}
-                            className={() =>
-                              `${linkBaseClass} py-1.5 ${
-                                isNavItemActive(child.to, child.end)
-                                  ? "bg-primary/10 text-primary border-primary/20"
-                                  : "text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/20"
-                              }`
-                            }
-                          >
-                            <Package className="h-3.5 w-3.5 text-current" />
-                            <span>{child.label}</span>
-                          </NavLink>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              }
-
               return (
                 <NavLink
                   key={item.to}
-                  to={item.to!}
+                  to={item.to}
                   end={item.end}
                   className={() =>
                     `${linkBaseClass} ${
@@ -471,6 +393,22 @@ const AppShell = ({
                 <h1 className="text-xs sm:text-sm font-semibold text-foreground truncate">{title}</h1>
               </div>
 
+              <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                onClick={toggleTheme}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -502,6 +440,7 @@ const AppShell = ({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </div>
             </div>
           </header>
 

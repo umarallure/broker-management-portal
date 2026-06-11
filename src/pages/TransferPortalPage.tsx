@@ -894,7 +894,7 @@ const TransferPortalPage = () => {
 
         toast({
           title: 'Status Updated',
-          description: `Lead transitioned to Lawyer Portal - Ready to Move Forward`,
+          description: `Lead transitioned to Broker Portal - Ready to Move Forward`,
         });
         
         setTimeout(() => {
@@ -936,7 +936,7 @@ const TransferPortalPage = () => {
 
     const headers = [
       'Submission ID',
-      'Lawyer Name',
+      'Broker Name',
       'Phone Number',
       'Email',
       'Firm Name',
@@ -1081,7 +1081,7 @@ const TransferPortalPage = () => {
                 </Button>
                 <Button size="sm" onClick={() => navigate('/add-lead')} variant="default">
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Lawyer
+                  Add Broker
                 </Button>
               </div>
             </div>
@@ -1376,7 +1376,7 @@ const TransferPortalPage = () => {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-                          <th className="px-4 py-3">Lawyer Name</th>
+                          <th className="px-4 py-3">Broker Name</th>
                           <th className="px-4 py-3">Phone</th>
                           <th className="px-4 py-3">Firm</th>
                           <th className="px-4 py-3">Stage</th>
@@ -1479,7 +1479,7 @@ const TransferPortalPage = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cold_call_pipeline">Marketing Pipeline</SelectItem>
-                      <SelectItem value="lawyer_portal">Lawyer Portal</SelectItem>
+                      <SelectItem value="lawyer_portal">Broker Portal</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
