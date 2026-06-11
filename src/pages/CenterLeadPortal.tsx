@@ -14,7 +14,7 @@ import { format } from 'date-fns';
 import { CallbackRequestForm } from '@/components/CallbackRequestForm';
 import { CenterCreateLeadModal } from '@/components/CenterCreateLeadModal';
 
-type Lawyer = {
+type BrokerLead = {
   id: string;
   submission_id: string;
   customer_full_name: string | null;
@@ -33,8 +33,8 @@ const CenterLeadPortal = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [lawyers, setLawyers] = useState<Lawyer[]>([]);
-  const [filteredLawyers, setFilteredLawyers] = useState<Lawyer[]>([]);
+  const [brokerLeads, setBrokerLeads] = useState<BrokerLead[]>([]);
+  const [filteredBrokerLeads, setFilteredBrokerLeads] = useState<BrokerLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('');
   const [nameFilter, setNameFilter] = useState('');
@@ -50,34 +50,34 @@ const CenterLeadPortal = () => {
 
   useEffect(() => {
     if (centerInfo && leadVendor) {
-      fetchLawyers();
+      fetchBrokerLeads();
     }
   }, [centerInfo, leadVendor]);
 
   useEffect(() => {
     applyFilters();
     setCurrentPage(1); // Reset to first page when filters change
-  }, [lawyers, dateFilter, nameFilter]);
+  }, [brokerLeads, dateFilter, nameFilter]);
 
-  const fetchLawyers = async () => {
+  const fetchBrokerLeads = async () => {
     if (!leadVendor) return;
 
     try {
-      // Get lawyers for this center's vendor with only the required fields
-      const { data: lawyersData, error: lawyersError } = await supabase
+      // Get broker leads for this center's vendor with only the required fields
+      const { data: brokerLeadsData, error: brokerLeadsError } = await supabase
         .from('leads')
         .select('id, submission_id, customer_full_name, phone_number, carrier, monthly_premium, coverage_amount, state, created_at, submission_date')
         .eq('lead_vendor', leadVendor)
         .order('created_at', { ascending: false });
 
-      if (lawyersError) throw lawyersError;
+      if (brokerLeadsError) throw brokerLeadsError;
 
-      setLawyers(lawyersData || []);
+      setBrokerLeads(brokerLeadsData || []);
     } catch (error) {
-      console.error('Error fetching lawyers:', error);
+      console.error('Error fetching broker leads:', error);
       toast({
-        title: "Error fetching lawyers",
-        description: "Unable to load your lawyers. Please try again.",
+        title: "Error fetching broker leads",
+        description: "Unable to load your broker leads. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -86,24 +86,24 @@ const CenterLeadPortal = () => {
   };
 
   const applyFilters = () => {
-    let filtered = lawyers;
+    let filtered = brokerLeads;
 
     if (dateFilter) {
-      filtered = filtered.filter(lawyer =>
-        lawyer.created_at && lawyer.created_at.includes(dateFilter)
+      filtered = filtered.filter(brokerLead =>
+        brokerLead.created_at && brokerLead.created_at.includes(dateFilter)
       );
     }
 
     if (nameFilter) {
-      filtered = filtered.filter(lawyer =>
-        lawyer.customer_full_name?.toLowerCase().includes(nameFilter.toLowerCase())
+      filtered = filtered.filter(brokerLead =>
+        brokerLead.customer_full_name?.toLowerCase().includes(nameFilter.toLowerCase())
       );
     }
 
-    setFilteredLawyers(filtered);
+    setFilteredBrokerLeads(filtered);
   };
 
-  const getLawyerStatus = (lawyer: Lawyer) => {
+  const getBrokerLeadStatus = (brokerLead: BrokerLead) => {
     return 'Available';
   };
 
@@ -112,30 +112,30 @@ const CenterLeadPortal = () => {
     navigate('/center-auth');
   };
 
-  const handleSendCallback = (lawyer: Lawyer) => {
-    console.log('[DEBUG] Send Callback clicked for lawyer:', lawyer.submission_id);
-    const url = `/center-callback-request?submissionId=${lawyer.submission_id}`;
+  const handleSendCallback = (brokerLead: BrokerLead) => {
+    console.log('[DEBUG] Send Callback clicked for broker lead:', brokerLead.submission_id);
+    const url = `/center-callback-request?submissionId=${brokerLead.submission_id}`;
     console.log('[DEBUG] Navigating to:', url);
     navigate(url);
   };
 
-  const handleLawyerCreated = () => {
-    fetchLawyers(); // Refresh the lawyers list
+  const handleBrokerLeadCreated = () => {
+    fetchBrokerLeads(); // Refresh the broker lead list
     toast({
       title: "Success",
-      description: "Lawyer has been created and added to your portal.",
+      description: "Broker lead has been created and added to your portal.",
     });
   };
 
   // Pagination functions
-  const getPaginatedLawyers = () => {
+  const getPaginatedBrokerLeads = () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return filteredLawyers.slice(startIndex, endIndex);
+    return filteredBrokerLeads.slice(startIndex, endIndex);
   };
 
   const getTotalPages = () => {
-    return Math.ceil(filteredLawyers.length / itemsPerPage);
+    return Math.ceil(filteredBrokerLeads.length / itemsPerPage);
   };
 
   const handlePageChange = (page: number) => {
@@ -145,7 +145,7 @@ const CenterLeadPortal = () => {
     setCurrentPage(page);
   };
 
-  const paginatedLawyers = getPaginatedLawyers();
+  const paginatedBrokerLeads = getPaginatedBrokerLeads();
   const totalPages = getTotalPages();
 
   if (authLoading || centerLoading || isLoading) {
@@ -190,7 +190,7 @@ const CenterLeadPortal = () => {
                 <User className="h-4 w-4 text-blue-500" />
                 <span className="text-xs sm:text-sm text-muted-foreground">Total Leads</span>
               </div>
-              <p className="text-2xl font-bold">{lawyers.length}</p>
+              <p className="text-2xl font-bold">{brokerLeads.length}</p>
             </CardContent>
           </Card>
           <Card>
@@ -199,7 +199,7 @@ const CenterLeadPortal = () => {
                 <DollarSign className="h-4 w-4 text-green-500" />
                 <span className="text-xs sm:text-sm text-muted-foreground">Active Leads</span>
               </div>
-              <p className="text-xl sm:text-2xl font-bold">{lawyers.length}</p>
+              <p className="text-xl sm:text-2xl font-bold">{brokerLeads.length}</p>
             </CardContent>
           </Card>
           <Card>
@@ -209,7 +209,7 @@ const CenterLeadPortal = () => {
                 <span className="text-xs sm:text-sm text-muted-foreground">This Week</span>
               </div>
               <p className="text-xl sm:text-2xl font-bold">
-                {lawyers.filter(l => {
+                {brokerLeads.filter(l => {
                   const weekAgo = new Date();
                   weekAgo.setDate(weekAgo.getDate() - 7);
                   return l.created_at && new Date(l.created_at) > weekAgo;
@@ -224,7 +224,7 @@ const CenterLeadPortal = () => {
                 <span className="text-xs sm:text-sm text-muted-foreground">Recent Leads</span>
               </div>
               <p className="text-xl sm:text-2xl font-bold">
-                {lawyers.filter(l => {
+                {brokerLeads.filter(l => {
                   const weekAgo = new Date();
                   weekAgo.setDate(weekAgo.getDate() - 7);
                   return l.created_at && new Date(l.created_at) > weekAgo;
@@ -270,7 +270,7 @@ const CenterLeadPortal = () => {
         {/* Leads List */}
         <div className="space-y-3 sm:space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
-            <h2 className="text-lg sm:text-xl font-semibold">Your Leads ({filteredLawyers.length})</h2>
+            <h2 className="text-lg sm:text-xl font-semibold">Your Leads ({filteredBrokerLeads.length})</h2>
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               {totalPages > 1 && (
                 <div className="text-xs sm:text-sm text-muted-foreground">
@@ -291,67 +291,67 @@ const CenterLeadPortal = () => {
                 className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Create Lawyer</span>
+                <span className="hidden sm:inline">Create Broker Lead</span>
                 <span className="sm:hidden">Create</span>
               </Button>
             </div>
           </div>
 
-          {filteredLawyers.length === 0 ? (
+          {filteredBrokerLeads.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <p className="text-muted-foreground">No lawyers found matching your filters.</p>
+                <p className="text-muted-foreground">No broker leads found matching your filters.</p>
               </CardContent>
             </Card>
           ) : (
             <>
-              {paginatedLawyers.map((lawyer) => (
+              {paginatedBrokerLeads.map((brokerLead) => (
                 <Card 
-                  key={lawyer.id} 
+                  key={brokerLead.id}
                   className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => navigate(`/leads/${lawyer.submission_id}`)}
+                  onClick={() => navigate(`/leads/${brokerLead.submission_id}`)}
                 >
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex flex-col space-y-3">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <h3 className="text-lg font-semibold hover:text-blue-600 transition-colors">{lawyer.customer_full_name}</h3>
+                        <h3 className="text-lg font-semibold hover:text-blue-600 transition-colors">{brokerLead.customer_full_name}</h3>
                         <Badge className="bg-blue-500 text-white w-fit">
-                          {getLawyerStatus(lawyer)}
+                          {getBrokerLeadStatus(brokerLead)}
                         </Badge>
                       </div>
 
-                      {/* Basic Lawyer Info */}
+                      {/* Basic broker lead info */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-muted-foreground">
                         <div>
-                          <span className="font-medium">Phone:</span> {lawyer.phone_number || 'N/A'}
+                          <span className="font-medium">Phone:</span> {brokerLead.phone_number || 'N/A'}
                         </div>
                         <div>
-                          <span className="font-medium">Coverage:</span> ${lawyer.coverage_amount?.toLocaleString() || 'N/A'}
+                          <span className="font-medium">Coverage:</span> ${brokerLead.coverage_amount?.toLocaleString() || 'N/A'}
                         </div>
                         <div>
-                          <span className="font-medium">Premium:</span> ${lawyer.monthly_premium?.toLocaleString() || 'N/A'}
+                          <span className="font-medium">Premium:</span> ${brokerLead.monthly_premium?.toLocaleString() || 'N/A'}
                         </div>
                         <div>
                           <span className="font-medium">Date:</span>{' '}
-                          {lawyer.created_at ? format(new Date(lawyer.created_at), 'MMM dd, yyyy') : 'N/A'}
+                          {brokerLead.created_at ? format(new Date(brokerLead.created_at), 'MMM dd, yyyy') : 'N/A'}
                         </div>
                       </div>
 
-                      {/* Additional Lawyer Info */}
+                      {/* Additional broker lead info */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-muted-foreground">
                         <div>
-                          <span className="font-medium">Carrier:</span> {lawyer.carrier || 'N/A'}
+                          <span className="font-medium">Carrier:</span> {brokerLead.carrier || 'N/A'}
                         </div>
                         <div>
-                          <span className="font-medium">State:</span> {lawyer.state || 'N/A'}
+                          <span className="font-medium">State:</span> {brokerLead.state || 'N/A'}
                         </div>
                         <div>
                           <span className="font-medium">Submission Date:</span>{' '}
-                          {lawyer.submission_date ? format(new Date(lawyer.submission_date), 'MMM dd, yyyy') : 'N/A'}
+                          {brokerLead.submission_date ? format(new Date(brokerLead.submission_date), 'MMM dd, yyyy') : 'N/A'}
                         </div>
                         <div>
                           <span className="font-medium">Created:</span>{' '}
-                          {lawyer.created_at ? format(new Date(lawyer.created_at), 'MMM dd, yyyy') : 'N/A'}
+                          {brokerLead.created_at ? format(new Date(brokerLead.created_at), 'MMM dd, yyyy') : 'N/A'}
                         </div>
                       </div>
 
@@ -360,7 +360,7 @@ const CenterLeadPortal = () => {
                         <Button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleSendCallback(lawyer);
+                            handleSendCallback(brokerLead);
                           }}
                           className="bg-blue-600 hover:bg-blue-700 w-full lg:w-auto text-sm"
                           size="sm"
@@ -378,7 +378,7 @@ const CenterLeadPortal = () => {
               {totalPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-6">
                   <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
-                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredLawyers.length)} of {filteredLawyers.length} entries
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredBrokerLeads.length)} of {filteredBrokerLeads.length} entries
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -411,12 +411,12 @@ const CenterLeadPortal = () => {
         </div>
       </div>
 
-      {/* Create Lawyer Modal */}
+      {/* Create broker lead modal */}
       {leadVendor && (
         <CenterCreateLeadModal
           open={createLeadModalOpen}
           onClose={() => setCreateLeadModalOpen(false)}
-          onLeadCreated={handleLawyerCreated}
+          onLeadCreated={handleBrokerLeadCreated}
           leadVendor={leadVendor}
         />
       )}

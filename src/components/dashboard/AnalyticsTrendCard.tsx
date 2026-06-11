@@ -33,7 +33,7 @@ function CustomTooltip({ active, payload, label }: TooltipProps<number, string>)
   const SERIES_META: Record<string, { label: string; color: string }> = {
     total: { label: 'Total Opportunities', color: '#AE4010' },
     marketing: { label: 'Marketing Pipeline', color: '#4A90D9' },
-    portal: { label: 'Lawyer Portal Pipeline', color: '#3A9D5C' },
+    portal: { label: 'Broker Portal Pipeline', color: '#3A9D5C' },
   };
 
   return (
@@ -208,7 +208,7 @@ export default function AnalyticsTrendCard({
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-[#3A9D5C]" />
           <span className="text-[11px] font-medium text-[var(--dash-text-muted)]">
-            Lawyer Portal Pipeline
+            Broker Portal Pipeline
           </span>
         </div>
       </div>

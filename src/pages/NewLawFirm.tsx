@@ -271,7 +271,7 @@ const NewLawFirm = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cold_call_pipeline">Marketing Pipeline</SelectItem>
-                      <SelectItem value="lawyer_portal">Lawyer Portal</SelectItem>
+                      <SelectItem value="lawyer_portal">Broker Portal</SelectItem>
                       <SelectItem value="submission_portal">Submission Portal</SelectItem>
                     </SelectContent>
                   </Select>

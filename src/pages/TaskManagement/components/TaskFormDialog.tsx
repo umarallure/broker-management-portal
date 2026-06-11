@@ -316,7 +316,7 @@ export function TaskFormDialog({
               {isEditing ? "Update Task" : "Create Task"}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Set the owner, deadline, priority, and lawyer context.
+              Set the owner, deadline, priority, and broker context.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -489,7 +489,7 @@ export function TaskFormDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="task-lawyer-reference">Lawyer Reference</Label>
+                <Label htmlFor="task-lawyer-reference">Broker Reference</Label>
                 <div className="relative">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -507,8 +507,8 @@ export function TaskFormDialog({
                       readOnly={lockLawyer}
                       placeholder={
                         lockLawyer
-                          ? "Attached lawyer"
-                          : "Search lawyer name, firm, or email"
+                          ? "Attached broker"
+                          : "Search broker name, company, or email"
                       }
                       className={`h-10 border-border bg-background pl-9 pr-10 ${lockLawyer ? "cursor-default" : ""}`}
                     />
@@ -531,7 +531,7 @@ export function TaskFormDialog({
                         variant="outline"
                         className="rounded-full border-border px-2.5 py-1 text-xs"
                       >
-                        Attached: {lawyerSearchText || "Selected lawyer"}
+                        Attached: {lawyerSearchText || "Selected broker"}
                       </Badge>
                     </div>
                   ) : null}
@@ -543,7 +543,7 @@ export function TaskFormDialog({
                           {lawyerSearchLoading ? (
                             <div className="flex items-center gap-2 rounded-xl px-3 py-3 text-sm text-muted-foreground">
                               <Loader2 className="h-4 w-4 animate-spin" />
-                              Loading lawyers...
+                              Loading brokers...
                             </div>
                           ) : null}
 
@@ -581,8 +581,8 @@ export function TaskFormDialog({
                           {showLawyerEmptyState ? (
                             <div className="rounded-xl px-3 py-3 text-sm text-muted-foreground">
                               {lawyerSearchText.trim().length > 0
-                                ? "No lawyers matched that search."
-                                : "No lawyers are available right now."}
+                                ? "No brokers matched that search."
+                                : "No brokers are available right now."}
                             </div>
                           ) : null}
                         </div>

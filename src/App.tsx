@@ -20,7 +20,7 @@ import CallResultJourney from "./pages/CallResultJourney";
 import NewCallback from "./pages/NewCallback";
 import NewLawFirm from "./pages/NewLawFirm";
 import DailyDealFlowPage from "./pages/DailyDealFlow/DailyDealFlowPage";
-import LawyerLeadDetailsPage from "@/pages/LawyerLeadDetailsPage";
+import BrokerLeadDetailsPage from "@/pages/BrokerLeadDetailsPage";
 import LeadDetailsPage from "./pages/LeadDetails/LeadDetailsPage";
 import TransferPortalPage from "./pages/TransferPortalPage";
 import SubmissionPortalPage from "./pages/SubmissionPortalPage";
@@ -42,15 +42,9 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import UserManagement from "./pages/UserManagement";
 import MarketingTeamPage from "./pages/MarketingTeamPage";
 import LeadAssignmentPage from "./pages/LeadAssignmentPage";
-import AccountOrderManagementPage from "./pages/AccountOrderManagementPage";
-import QuickActionsPage from "./pages/QuickActionsPage";
-import OnboardingManagementPage from "./pages/OnboardingManagementPage";
-import AccountOrderDetailPage from "./pages/AccountOrderDetailPage";
-import AccountLawyerProfilesPage from "./pages/AccountLawyerProfilesPage";
-import AccountLawyerProfileDetailPage from "./pages/AccountLawyerProfileDetailPage";
 import SectionPlaceholderPage from "./pages/SectionPlaceholderPage";
 import OnboardingPortalPage from "./pages/OnboardingPortalPage";
-import LawyerManagementPage from "./pages/LawyerManagementPage";
+import BrokerManagementPage from "./pages/BrokerManagementPage";
 import TaskManagementPage from "./pages/TaskManagement";
 import AppShell from "@/components/layout/AppShell";
 import LogoLoader from "@/components/LogoLoader";
@@ -91,7 +85,7 @@ const App = () => (
               path="/leads" 
               element={
                 <ProtectedRoute>
-                  <AppShell title="Lawyer Contacts">
+                  <AppShell title="Broker Contacts">
                     <Leads />
                   </AppShell>
                 </ProtectedRoute>
@@ -174,72 +168,6 @@ const App = () => (
             />
 
             <Route
-              path="/account-management/orders"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Account Management">
-                    <AccountOrderManagementPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/account-management/orders/:orderId"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Account Management">
-                    <AccountOrderDetailPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/account-management/quick-actions"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Quick Actions">
-                    <QuickActionsPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/account-management/onboarding"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Onboarding Management">
-                    <OnboardingManagementPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/account-management/lawyer-profiles"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Lawyer Profile Management">
-                    <AccountLawyerProfilesPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/account-management/lawyer-profiles/:userId"
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Lawyer Profile Management">
-                    <AccountLawyerProfileDetailPage />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
               path="/lead-assignment"
               element={
                 <ProtectedRoute>
@@ -303,7 +231,7 @@ const App = () => (
               path="/add-lead" 
               element={
                 <ProtectedRoute>
-                  <AppShell title="Add Lawyer">
+                  <AppShell title="Add Broker">
                     <NewCallback />
                   </AppShell>
                 </ProtectedRoute>
@@ -333,7 +261,7 @@ const App = () => (
               path="/leads/:submissionId" 
               element={
                 <ProtectedRoute>
-                  <AppShell title="Lawyer Details">
+                  <AppShell title="Broker Details">
                     <LeadDetailsPage />
                   </AppShell>
                 </ProtectedRoute>
@@ -384,12 +312,20 @@ const App = () => (
               }
             />
             <Route
+              path="/broker-management"
+              element={
+                <ProtectedRoute>
+                  <AppShell title="Broker Management">
+                    <BrokerManagementPage />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/lawyer-management"
               element={
                 <ProtectedRoute>
-                  <AppShell title="Lawyer Management">
-                    <LawyerManagementPage />
-                  </AppShell>
+                  <Navigate to="/broker-management" replace />
                 </ProtectedRoute>
               }
             />
@@ -408,11 +344,11 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AppShell
-                    title="Lawyer Lead Details"
+                    title="Broker Lead Details"
                     defaultSidebarCollapsed
                     autoCollapseSidebarAfterMs={2000}
                   >
-                    <LawyerLeadDetailsPage />
+                    <BrokerLeadDetailsPage />
                   </AppShell>
                 </ProtectedRoute>
               } 
@@ -431,7 +367,7 @@ const App = () => (
               path="/submission-portal" 
               element={
                 <ProtectedRoute>
-                  <AppShell title="Lawyer Portal">
+                  <AppShell title="Broker Portal">
                     <SubmissionPortalPage />
                   </AppShell>
                 </ProtectedRoute>

@@ -92,7 +92,7 @@ export const NavigationHeader = ({ title, showBackButton = false, backTo }: Navi
     <div className="border-b bg-card">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex items-center space-x-4">
-          <img src="/assets/logo.png" alt="Lawyer Onboarding Portal" className="h-10 w-auto" />
+          <img src="/assets/logo.png" alt="Broker Onboarding Portal" className="h-10 w-auto" />
           {showBackButton && (
             <Button
               variant="outline"
@@ -139,11 +139,11 @@ export const NavigationHeader = ({ title, showBackButton = false, backTo }: Navi
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/transfer-portal')}>
                       <Eye className="mr-2 h-4 w-4" />
-                      Marketing Opportunitues
+                      Marketing Opportunities
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/submission-portal')}>
                       <CheckCircle className="mr-2 h-4 w-4" />
-                      Lawyer Portal
+                      Broker Portal
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
@@ -162,7 +162,7 @@ export const NavigationHeader = ({ title, showBackButton = false, backTo }: Navi
       
                     <DropdownMenuItem onClick={() => navigate('/leads')}>
                       <User className="mr-2 h-4 w-4" />
-                      Lawyer Contacts
+                      Broker Contacts
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
@@ -174,7 +174,7 @@ export const NavigationHeader = ({ title, showBackButton = false, backTo }: Navi
                     <DropdownMenuLabel>Lead Vendor</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => navigate('/center-lead-portal')}>
                       <Grid3X3 className="mr-2 h-4 w-4" />
-                      My Lawyers
+                      My Brokers
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/center-calendar-view')}>
                       <Calendar className="mr-2 h-4 w-4" />

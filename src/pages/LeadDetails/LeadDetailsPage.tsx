@@ -24,6 +24,23 @@ type LeadNote = {
   source?: string | null;
 };
 
+type LeadNotesQueryResult = {
+  data: LeadNote[] | null;
+  error: { message?: string } | null;
+};
+
+type LeadNotesQuery = PromiseLike<LeadNotesQueryResult> & {
+  eq: (column: string, value: string) => LeadNotesQuery;
+};
+
+type LeadNotesClient = {
+  from: (table: "lead_notes") => {
+    select: (columns: string) => {
+      order: (column: string, options: { ascending: boolean }) => LeadNotesQuery;
+    };
+  };
+};
+
 type LegacyNote = {
   source: string;
   note: string;
@@ -111,7 +128,7 @@ const LeadDetailsPage = () => {
 
       if (!data) {
         toast({
-          title: "Lawyer not found",
+          title: "Broker lead not found",
           description: `No lawyer found for submission ID ${submissionId}`,
           variant: "destructive",
         });
@@ -128,7 +145,7 @@ const LeadDetailsPage = () => {
         data.additional_notes
           ? [
               {
-                source: "Lawyers",
+                source: "Brokers",
                 note: String(data.additional_notes).trim(),
                 timestamp: data.updated_at || data.created_at || null,
               },
@@ -143,7 +160,7 @@ const LeadDetailsPage = () => {
   const fetchNotes = async (submission_id: string | null, lead_id: string | null) => {
     setNotesLoading(true);
     try {
-      const query = (supabase as any)
+      const query = (supabase as unknown as LeadNotesClient)
         .from("lead_notes")
         .select("id, lead_id, submission_id, note, created_at, created_by, author_name, source")
         .order("created_at", { ascending: false });
@@ -162,7 +179,7 @@ const LeadDetailsPage = () => {
         return;
       }
 
-      setNotes((data as LeadNote[]) || []);
+      setNotes(data || []);
     } catch (e) {
       console.error("Unexpected error fetching lead notes", e);
       setNotes([]);
@@ -172,8 +189,8 @@ const LeadDetailsPage = () => {
   };
 
   const headerTitle = useMemo(() => {
-    if (!lead) return "Lawyer Details";
-    const name = lead.customer_full_name ? String(lead.customer_full_name) : "Lawyer";
+    if (!lead) return "Broker Details";
+    const name = lead.customer_full_name ? String(lead.customer_full_name) : "Broker";
     const vendor = lead.lead_vendor ? ` - ${lead.lead_vendor}` : "";
     return `${name}${vendor}`;
   }, [lead]);
@@ -277,8 +294,8 @@ const LeadDetailsPage = () => {
                     { label: "Passengers Count", value: displayValue(lead.passengers_count) },
                     { label: "Injuries", value: displayValue(lead.injuries) },
                     { label: "Medical Attention", value: displayValue(lead.medical_attention) },
-                    { label: "Prior Attorney Involved", value: displayValue(lead.prior_attorney_involved) },
-                    { label: "Prior Attorney Details", value: displayValue(lead.prior_attorney_details) },
+                    { label: "Prior Legal Representation", value: displayValue(lead.prior_attorney_involved) },
+                    { label: "Prior Representation Details", value: displayValue(lead.prior_attorney_details) },
                     { label: "Contact Name", value: displayValue(lead.contact_name) },
                     { label: "Contact Number", value: displayValue(lead.contact_number) },
                     { label: "Contact Address", value: displayValue(lead.contact_address) },

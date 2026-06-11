@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0'
 
-const DEFAULT_ATTORNEY_PORTAL_URL = 'https://attorney.accidentpayments.com'
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:8080',
@@ -10,11 +9,9 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://127.0.0.1:8080',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:4173',
-  'https://onboarding.accidentpayments.com',
-  'https://attorney.accidentpayments.com',
 ]
 
-type AppUserRole = 'super_admin' | 'admin' | 'lawyer' | 'agent'
+type AppUserRole = 'super_admin' | 'admin' | 'lawyer' | 'agent' | 'broker' | 'broker_member'
 
 type AuthedUser = {
   id: string
@@ -95,7 +92,7 @@ const isLocalRequest = (req: Request) => {
   }
 }
 
-const normalizeAttorneyPortalUrl = (value: unknown) => {
+const normalizeConfiguredBrokerPortalUrl = (value: unknown) => {
   if (typeof value !== 'string') return null
 
   const trimmed = value.trim()
@@ -104,16 +101,23 @@ const normalizeAttorneyPortalUrl = (value: unknown) => {
   try {
     const parsed = new URL(trimmed)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
-
-    if (parsed.origin === DEFAULT_ATTORNEY_PORTAL_URL) {
-      return parsed.origin
-    }
-
-    if (isLoopbackHost(parsed.hostname)) {
-      return parsed.origin
-    }
-
+    return parsed.origin
+  } catch {
     return null
+  }
+}
+
+const normalizeLocalBrokerPortalUrl = (value: unknown) => {
+  if (typeof value !== 'string') return null
+
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
+    if (!isLoopbackHost(parsed.hostname)) return null
+    return parsed.origin
   } catch {
     return null
   }
@@ -145,7 +149,7 @@ const sanitizeRequestedPath = (value: unknown) => {
 
 const normalizeStatus = (value: string | null | undefined) => String(value ?? '').trim().toLowerCase()
 
-const isLawyerAccountLaunchable = (value: string | null | undefined) => {
+const isBrokerAccountLaunchable = (value: string | null | undefined) => {
   const normalized = normalizeStatus(value)
   if (!normalized) return true
   return !['inactive', 'disabled', 'banned', 'suspended'].includes(normalized)
@@ -235,70 +239,72 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}))
-    const lawyerUserId = typeof body?.lawyer_user_id === 'string' ? body.lawyer_user_id.trim() : ''
+    const brokerUserId = typeof body?.broker_user_id === 'string' ? body.broker_user_id.trim() : ''
     const requestedPath = sanitizeRequestedPath(body?.requested_path)
-    const configuredAttorneyPortalUrl = normalizeAttorneyPortalUrl(
-      getEnv('ATTORNEY_PORTAL_URL', DEFAULT_ATTORNEY_PORTAL_URL)
-    )
-    const requestedAttorneyPortalUrl = isLocalRequest(req) ? normalizeAttorneyPortalUrl(body?.attorney_portal_url) : null
-    const attorneyPortalUrl = requestedAttorneyPortalUrl ?? configuredAttorneyPortalUrl ?? DEFAULT_ATTORNEY_PORTAL_URL
+    const configuredBrokerPortalUrl = normalizeConfiguredBrokerPortalUrl(Deno.env.get('BROKER_PORTAL_URL'))
+    const requestedBrokerPortalUrl = isLocalRequest(req) ? normalizeLocalBrokerPortalUrl(body?.broker_portal_url) : null
+    const brokerPortalUrl = requestedBrokerPortalUrl ?? configuredBrokerPortalUrl
 
-    if (!lawyerUserId) {
-      return json(req, 400, { error: 'lawyer_user_id is required' })
+    if (!brokerUserId) {
+      return json(req, 400, { error: 'broker_user_id is required' })
     }
 
-    const { data: lawyerRow, error: lawyerError } = await adminClient
+    if (!brokerPortalUrl) {
+      return json(req, 500, { error: 'BROKER_PORTAL_URL is not configured' })
+    }
+
+    const { data: brokerRow, error: brokerError } = await adminClient
       .from('app_users')
       .select('user_id,email,display_name,role,account_status')
-      .eq('user_id', lawyerUserId)
+      .eq('user_id', brokerUserId)
       .maybeSingle()
 
-    if (lawyerError) {
-      return json(req, 500, { error: lawyerError.message })
+    if (brokerError) {
+      return json(req, 500, { error: brokerError.message })
     }
 
-    const lawyer = lawyerRow as AppUserLookup | null
-    if (!lawyer || lawyer.role !== 'lawyer') {
-      return json(req, 404, { error: 'Lawyer account not found' })
+    const broker = brokerRow as AppUserLookup | null
+    if (!broker || broker.role !== 'broker') {
+      return json(req, 404, { error: 'Broker account not found' })
     }
 
-    if (!isLawyerAccountLaunchable(lawyer.account_status)) {
-      return json(req, 400, { error: 'This lawyer account is not active and cannot be launched' })
+    if (!isBrokerAccountLaunchable(broker.account_status)) {
+      return json(req, 400, { error: 'This broker account is not active and cannot be launched' })
     }
 
-    const { data: authUserData, error: authUserError } = await adminClient.auth.admin.getUserById(lawyerUserId)
+    const { data: authUserData, error: authUserError } = await adminClient.auth.admin.getUserById(brokerUserId)
     if (authUserError) {
       return json(req, 500, { error: authUserError.message })
     }
 
     const authUser = authUserData.user
     if (!authUser) {
-      return json(req, 404, { error: 'Lawyer auth account not found' })
+      return json(req, 404, { error: 'Broker auth account not found' })
     }
 
-    const lawyerEmail = authUser.email?.trim().toLowerCase() ?? ''
-    if (!lawyerEmail) {
-      return json(req, 400, { error: 'The selected lawyer auth account does not have a valid email address' })
+    const brokerEmail = authUser.email?.trim().toLowerCase() ?? ''
+    if (!brokerEmail) {
+      return json(req, 400, { error: 'The selected broker auth account does not have a valid email address' })
     }
 
-    const appUserEmail = lawyer.email?.trim().toLowerCase() ?? ''
-    if (appUserEmail && appUserEmail !== lawyerEmail) {
+    const appUserEmail = broker.email?.trim().toLowerCase() ?? ''
+    if (appUserEmail && appUserEmail !== brokerEmail) {
       return json(req, 409, {
-        error: 'Lawyer account email is out of sync with auth. Please sync the account email before launching.',
+        error: 'Broker account email is out of sync with auth. Please sync the account email before launching.',
       })
     }
 
     const bannedUntil = typeof authUser.banned_until === 'string' ? Date.parse(authUser.banned_until) : Number.NaN
     if (Number.isFinite(bannedUntil) && bannedUntil > Date.now()) {
-      return json(req, 400, { error: 'This lawyer auth account is currently banned and cannot be launched' })
+      return json(req, 400, { error: 'This broker auth account is currently banned and cannot be launched' })
     }
 
-    const redirectUrl = new URL('/launch-auth', attorneyPortalUrl)
+    const redirectUrl = new URL('/launch-auth', brokerPortalUrl)
     redirectUrl.searchParams.set('next', requestedPath)
 
     const { data: generateData, error: generateError } = await adminClient.auth.admin.generateLink({
       type: 'magiclink',
-      email: lawyerEmail,
+      email: brokerEmail,
       options: {
         redirectTo: redirectUrl.toString(),
       },
@@ -311,10 +317,10 @@ Deno.serve(async (req) => {
     return json(req, 200, {
       actionLink: generateData.properties.action_link,
       redirectTo: redirectUrl.toString(),
-      lawyer: {
-        userId: lawyer.user_id,
-        email: lawyerEmail,
-        displayName: lawyer.display_name,
+      broker: {
+        userId: broker.user_id,
+        email: brokerEmail,
+        displayName: broker.display_name,
       },
     })
   } catch (error) {

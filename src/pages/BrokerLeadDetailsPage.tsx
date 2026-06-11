@@ -78,7 +78,7 @@ const Field = ({
   </div>
 );
 
-const LawyerLeadDetailsPage = () => {
+const BrokerLeadDetailsPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();
@@ -527,7 +527,7 @@ const LawyerLeadDetailsPage = () => {
             <Card>
               <CardContent className="pt-6">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field label="Lawyer Full Name *">
+                  <Field label="Broker Full Name *">
                     <Input
                       className={inputCls}
                       value={form.lawyer_full_name ?? ""}
@@ -659,7 +659,7 @@ const LawyerLeadDetailsPage = () => {
                       <div className="flex items-center h-9">
                         <Badge variant="secondary" className="text-sm">
                           {form.pipeline_name === "cold_call_pipeline" ? "Marketing Pipeline" :
-                            form.pipeline_name === "lawyer_portal" ? "Lawyer Portal" :
+                            form.pipeline_name === "lawyer_portal" ? "Broker Portal" :
                             form.pipeline_name === "submission_portal" ? "Submission Portal" :
                             form.pipeline_name || "Unknown"}
                         </Badge>
@@ -675,7 +675,7 @@ const LawyerLeadDetailsPage = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="cold_call_pipeline">Marketing Pipeline</SelectItem>
-                          <SelectItem value="lawyer_portal">Lawyer Portal</SelectItem>
+                          <SelectItem value="lawyer_portal">Broker Portal</SelectItem>
                           <SelectItem value="submission_portal">Submission Portal</SelectItem>
                         </SelectContent>
                       </Select>
@@ -818,4 +818,4 @@ const LawyerLeadDetailsPage = () => {
   );
 };
 
-export default LawyerLeadDetailsPage;
+export default BrokerLeadDetailsPage;

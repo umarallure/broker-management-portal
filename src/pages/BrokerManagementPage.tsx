@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type React from "react";
 import type { MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowUpRight,
   BriefcaseBusiness,
   Building2,
-  ExternalLink,
   Mail,
   MapPin,
   Phone,
@@ -21,25 +21,12 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { brokerSupabase, type AppUserRow, type BrokerProfileRow } from "@/lib/broker-supabase";
 import { cn } from "@/lib/utils";
 
-type AppUserRow = {
-  user_id: string;
-  email: string | null;
-  display_name: string | null;
-  role: string | null;
-  account_status?: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type AttorneyProfileRow = Record<string, unknown> & {
-  user_id?: string | null;
-};
-
-type LawyerListItem = AppUserRow & {
-  profile: AttorneyProfileRow | null;
-  openOrders: number;
+type BrokerListItem = AppUserRow & {
+  profile: BrokerProfileRow | null;
+  teamMembers: number;
 };
 
 const DASH_INPUT_CLASS =
@@ -99,6 +86,20 @@ const formatDate = (value: string | null | undefined) => {
   }
 };
 
+const formatNumber = (value: number | null | undefined) => {
+  if (typeof value !== "number") return "Not set";
+  return new Intl.NumberFormat("en-US").format(value);
+};
+
+const formatCurrency = (value: number | null | undefined) => {
+  if (typeof value !== "number") return "Not set";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
 const pickFirstString = (record: Record<string, unknown> | null | undefined, keys: string[]) => {
   if (!record) return null;
 
@@ -110,10 +111,10 @@ const pickFirstString = (record: Record<string, unknown> | null | undefined, key
   return null;
 };
 
-const pickStates = (record: Record<string, unknown> | null | undefined) => {
+const pickArray = (record: Record<string, unknown> | null | undefined, key: string) => {
   if (!record) return [];
 
-  const value = record["licensed_states"];
+  const value = record[key];
   if (!Array.isArray(value)) return [];
 
   return value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
@@ -132,17 +133,10 @@ const formatAccountStatusLabel = (value: string | null | undefined) => {
     .join(" ");
 };
 
-const formatAccountTypeLabel = (value: string | null | undefined) => {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (!normalized) return "Not set";
-
-  if (normalized === "broker_lawyer") return "Broker Lawyer";
-  if (normalized === "internal_lawyer") return "Internal Lawyer";
-
-  return normalized
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+const formatSolCriteria = (value: string | null | undefined) => {
+  if (value === "6_12_months") return "6-12 months";
+  if (value === "12_plus_months") return "12+ months";
+  return "Not set";
 };
 
 const getAccountStatusBadgeClass = (value: string | null | undefined) => {
@@ -161,11 +155,11 @@ const getAccountStatusBadgeClass = (value: string | null | undefined) => {
 
 const isAccountActive = (value: string | null | undefined) => normalizeAccountStatus(value) === "active";
 
-const LawyerManagementPage = () => {
+const BrokerManagementPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const attorneyPortalUrl = import.meta.env.VITE_ATTORNEY_PORTAL_URL?.trim() || undefined;
+  const brokerPortalUrl = import.meta.env.VITE_BROKER_PORTAL_URL?.trim() || undefined;
   const locationState = location.state as { selectedUserId?: string } | null;
   const initialSelectedUserId =
     typeof locationState?.selectedUserId === "string" && locationState.selectedUserId.trim()
@@ -178,121 +172,82 @@ const LawyerManagementPage = () => {
   const [statusUpdatingUserId, setStatusUpdatingUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [lawyers, setLawyers] = useState<LawyerListItem[]>([]);
+  const [brokers, setBrokers] = useState<BrokerListItem[]>([]);
   const [query, setQuery] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-  const loadLawyers = useCallback(async () => {
+  const loadBrokers = useCallback(async () => {
     setError(null);
 
     try {
-      const client = supabase as unknown as {
-        from: (table: string) => {
-          select: (columns: string) => {
-            eq: (column: string, value: string) => {
-              order: (
-                column: string,
-                options?: { ascending?: boolean; nullsFirst?: boolean }
-              ) => Promise<{ data: AppUserRow[] | null; error: { message?: string } | null }>;
-            };
-            in?: never;
-          };
-        };
-      };
-
-      const { data: appUsers, error: appUsersError } = await client
+      const { data: appUsers, error: appUsersError } = await brokerSupabase
         .from("app_users")
         .select("user_id,email,display_name,role,account_status,created_at,updated_at")
-        .eq("role", "lawyer")
+        .eq("role", "broker")
         .order("created_at", { ascending: false });
 
       if (appUsersError) {
-        throw new Error(appUsersError.message || "Failed to load lawyer accounts");
+        throw new Error(appUsersError.message || "Failed to load broker accounts");
       }
 
-      const lawyerRows = (appUsers ?? []).filter((row) => row.user_id);
-      const userIds = lawyerRows.map((row) => row.user_id);
+      const brokerRows = (appUsers ?? []).filter((row) => row.user_id);
+      const userIds = brokerRows.map((row) => row.user_id);
 
       if (userIds.length === 0) {
-        setLawyers([]);
+        setBrokers([]);
         setSelectedUserId(null);
         return;
       }
 
-      const profilesClient = supabase as unknown as {
-        from: (table: string) => {
-          select: (columns: string) => {
-            in: (
-              column: string,
-              values: string[]
-            ) => Promise<{ data: AttorneyProfileRow[] | null; error: { message?: string } | null }>;
-          };
-        };
-      };
-
-      const { data: profileRows, error: profileError } = await profilesClient
-        .from("attorney_profiles")
+      const { data: profileRows, error: profileError } = await brokerSupabase
+        .from("broker_profiles")
         .select("*")
         .in("user_id", userIds);
 
       if (profileError) {
-        throw new Error(profileError.message || "Failed to load attorney profiles");
+        throw new Error(profileError.message || "Failed to load broker profiles");
       }
 
-      const profileByUserId = new Map<string, AttorneyProfileRow>();
+      const profileByUserId = new Map<string, BrokerProfileRow>();
       for (const row of profileRows ?? []) {
         const userId = typeof row.user_id === "string" ? row.user_id : "";
         if (userId) profileByUserId.set(userId, row);
       }
 
-      const ordersClient = supabase as unknown as {
-        from: (table: string) => {
-          select: (columns: string) => {
-            in: (column: string, values: string[]) => {
-              eq: (
-                column: string,
-                value: string
-              ) => Promise<{ data: Array<{ lawyer_id: string | null }> | null; error: { message?: string } | null }>;
-            };
-          };
-        };
-      };
+      const { data: teamRows, error: teamError } = await brokerSupabase
+        .from("broker_team_members")
+        .select("broker_id")
+        .in("broker_id", userIds);
 
-      const { data: openOrders, error: ordersError } = await ordersClient
-        .from("orders")
-        .select("lawyer_id")
-        .in("lawyer_id", userIds)
-        .eq("status", "OPEN");
-
-      if (ordersError) {
-        throw new Error(ordersError.message || "Failed to load open order counts");
+      if (teamError) {
+        throw new Error(teamError.message || "Failed to load broker team member counts");
       }
 
-      const openOrderCounts = new Map<string, number>();
-      for (const row of openOrders ?? []) {
-        const userId = typeof row.lawyer_id === "string" ? row.lawyer_id : "";
-        if (!userId) continue;
-        openOrderCounts.set(userId, (openOrderCounts.get(userId) ?? 0) + 1);
+      const teamMemberCounts = new Map<string, number>();
+      for (const row of teamRows ?? []) {
+        const brokerId = typeof row.broker_id === "string" ? row.broker_id : "";
+        if (!brokerId) continue;
+        teamMemberCounts.set(brokerId, (teamMemberCounts.get(brokerId) ?? 0) + 1);
       }
 
-      const merged = lawyerRows.map((row) => ({
+      const merged = brokerRows.map((row) => ({
         ...row,
         profile: profileByUserId.get(row.user_id) ?? null,
-        openOrders: openOrderCounts.get(row.user_id) ?? 0,
+        teamMembers: teamMemberCounts.get(row.user_id) ?? 0,
       }));
 
-      setLawyers(merged);
+      setBrokers(merged);
       setSelectedUserId((current) => {
-        if (current && merged.some((lawyer) => lawyer.user_id === current)) return current;
-        if (initialSelectedUserId && merged.some((lawyer) => lawyer.user_id === initialSelectedUserId)) {
+        if (current && merged.some((broker) => broker.user_id === current)) return current;
+        if (initialSelectedUserId && merged.some((broker) => broker.user_id === initialSelectedUserId)) {
           return initialSelectedUserId;
         }
         return merged[0]?.user_id ?? null;
       });
     } catch (loadError) {
-      setLawyers([]);
+      setBrokers([]);
       setSelectedUserId(null);
-      setError(loadError instanceof Error ? loadError.message : "Unable to load lawyer accounts.");
+      setError(loadError instanceof Error ? loadError.message : "Unable to load broker accounts.");
     }
   }, [initialSelectedUserId]);
 
@@ -301,7 +256,7 @@ const LawyerManagementPage = () => {
 
     const run = async () => {
       setLoading(true);
-      await loadLawyers();
+      await loadBrokers();
       if (mounted) setLoading(false);
     };
 
@@ -310,7 +265,7 @@ const LawyerManagementPage = () => {
     return () => {
       mounted = false;
     };
-  }, [loadLawyers]);
+  }, [loadBrokers]);
 
   const handleRefresh = useCallback(async (event?: MouseEvent<HTMLButtonElement>) => {
     event?.preventDefault();
@@ -320,108 +275,112 @@ const LawyerManagementPage = () => {
 
     setRefreshing(true);
     try {
-      await loadLawyers();
+      await loadBrokers();
     } finally {
       setRefreshing(false);
     }
-  }, [loadLawyers, refreshing]);
+  }, [loadBrokers, refreshing]);
 
-  const filteredLawyers = useMemo(() => {
+  const filteredBrokers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    if (!normalizedQuery) return lawyers;
+    if (!normalizedQuery) return brokers;
 
-    return lawyers.filter((lawyer) => {
-      const profile = lawyer.profile;
+    return brokers.filter((broker) => {
+      const profile = broker.profile;
       const fullName =
         pickFirstString(profile, ["full_name", "display_name", "name"]) ??
-        lawyer.display_name ??
+        broker.display_name ??
         "";
-      const firmName = pickFirstString(profile, ["firm_name", "company"]) ?? "";
-      const email = lawyer.email ?? pickFirstString(profile, ["primary_email", "email"]) ?? "";
-      const state = pickFirstString(profile, ["primary_city", "state"]) ?? pickStates(profile).join(" ");
-      const haystack = [fullName, firmName, email, state, lawyer.user_id].join(" ").toLowerCase();
+      const companyName = pickFirstString(profile, ["company_name", "company"]) ?? "";
+      const email = broker.email ?? pickFirstString(profile, ["primary_email", "email"]) ?? "";
+      const state = pickArray(profile, "active_states").join(" ");
+      const model = pickArray(profile, "active_models").join(" ");
+      const campaign = pickFirstString(profile, ["primary_campaign"]) ?? "";
+      const haystack = [fullName, companyName, email, state, model, campaign, broker.user_id]
+        .join(" ")
+        .toLowerCase();
 
       return haystack.includes(normalizedQuery);
     });
-  }, [lawyers, query]);
+  }, [brokers, query]);
 
   useEffect(() => {
-    if (filteredLawyers.length === 0) return;
-    if (selectedUserId && filteredLawyers.some((lawyer) => lawyer.user_id === selectedUserId)) return;
-    setSelectedUserId(filteredLawyers[0].user_id);
-  }, [filteredLawyers, selectedUserId]);
+    if (filteredBrokers.length === 0) return;
+    if (selectedUserId && filteredBrokers.some((broker) => broker.user_id === selectedUserId)) return;
+    setSelectedUserId(filteredBrokers[0].user_id);
+  }, [filteredBrokers, selectedUserId]);
 
-  const selectedLawyer = useMemo(
-    () => lawyers.find((lawyer) => lawyer.user_id === selectedUserId) ?? null,
-    [lawyers, selectedUserId]
+  const selectedBroker = useMemo(
+    () => brokers.find((broker) => broker.user_id === selectedUserId) ?? null,
+    [brokers, selectedUserId]
   );
-  const selectedLawyerIsActive = selectedLawyer ? isAccountActive(selectedLawyer.account_status) : false;
-  const isUpdatingSelectedLawyerStatus = selectedLawyer ? statusUpdatingUserId === selectedLawyer.user_id : false;
+  const selectedBrokerIsActive = selectedBroker ? isAccountActive(selectedBroker.account_status) : false;
+  const isUpdatingSelectedBrokerStatus = selectedBroker ? statusUpdatingUserId === selectedBroker.user_id : false;
 
   const handleAccountStatusToggle = useCallback(
     async (checked: boolean) => {
-      if (!selectedLawyer) return;
+      if (!selectedBroker) return;
 
       const nextStatus = checked ? "active" : "inactive";
-      const previousStatus = selectedLawyer.account_status ?? null;
-      const previousUpdatedAt = selectedLawyer.updated_at;
+      const previousStatus = selectedBroker.account_status ?? null;
+      const previousUpdatedAt = selectedBroker.updated_at;
 
-      setStatusUpdatingUserId(selectedLawyer.user_id);
-      setLawyers((current) =>
-        current.map((lawyer) =>
-          lawyer.user_id === selectedLawyer.user_id
-            ? { ...lawyer, account_status: nextStatus, updated_at: new Date().toISOString() }
-            : lawyer
+      setStatusUpdatingUserId(selectedBroker.user_id);
+      setBrokers((current) =>
+        current.map((broker) =>
+          broker.user_id === selectedBroker.user_id
+            ? { ...broker, account_status: nextStatus, updated_at: new Date().toISOString() }
+            : broker
         )
       );
 
       try {
-        const { error: updateError } = await supabase
+        const { error: updateError } = await brokerSupabase
           .from("app_users")
           .update({ account_status: nextStatus })
-          .eq("user_id", selectedLawyer.user_id);
+          .eq("user_id", selectedBroker.user_id);
 
         if (updateError) {
-          throw new Error(updateError.message || "Failed to update lawyer account status");
+          throw new Error(updateError.message || "Failed to update broker account status");
         }
 
         toast({
-          title: checked ? "Lawyer activated" : "Lawyer deactivated",
+          title: checked ? "Broker activated" : "Broker deactivated",
           description: checked
-            ? "This lawyer can access the portal again."
-            : "This lawyer will be blocked from launching the portal until reactivated.",
+            ? "This broker can access the portal again."
+            : "This broker will be blocked from launching the portal until reactivated.",
         });
       } catch (statusError) {
-        setLawyers((current) =>
-          current.map((lawyer) =>
-            lawyer.user_id === selectedLawyer.user_id
-              ? { ...lawyer, account_status: previousStatus, updated_at: previousUpdatedAt }
-              : lawyer
+        setBrokers((current) =>
+          current.map((broker) =>
+            broker.user_id === selectedBroker.user_id
+              ? { ...broker, account_status: previousStatus, updated_at: previousUpdatedAt }
+              : broker
           )
         );
 
         toast({
           title: "Status update failed",
           description:
-            statusError instanceof Error ? statusError.message : "Unable to update the lawyer account status.",
+            statusError instanceof Error ? statusError.message : "Unable to update the broker account status.",
           variant: "destructive",
         });
       } finally {
         setStatusUpdatingUserId(null);
       }
     },
-    [selectedLawyer, toast]
+    [selectedBroker, toast]
   );
 
   const handleOpenPortal = useCallback(async () => {
-    if (!selectedLawyer) return;
+    if (!selectedBroker) return;
 
     const popup = window.open("", "_blank");
     if (!popup) {
       toast({
         title: "Popup blocked",
-        description: "Allow popups for this site so we can open the lawyer portal in a new window.",
+        description: "Allow popups for this site so we can open the broker portal in a new window.",
         variant: "destructive",
       });
       return;
@@ -429,28 +388,28 @@ const LawyerManagementPage = () => {
 
     try {
       popup.opener = null;
-      popup.document.title = "Opening Lawyer Portal...";
+      popup.document.title = "Opening Broker Portal...";
       popup.document.body.style.margin = "0";
       popup.document.body.innerHTML =
-        "<div style=\"font-family:Inter,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f8f7f4;color:#3b2a1f;\">Launching lawyer portal...</div>";
+        "<div style=\"font-family:Inter,system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f8f7f4;color:#3b2a1f;\">Launching broker portal...</div>";
     } catch {
       // If the blank popup DOM is not available, we can still redirect it later.
     }
 
-    setLaunchingUserId(selectedLawyer.user_id);
+    setLaunchingUserId(selectedBroker.user_id);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("create-lawyer-portal-launch", {
+      const { data, error: fnError } = await supabase.functions.invoke("create-broker-portal-launch", {
         method: "POST",
         body: {
-          lawyer_user_id: selectedLawyer.user_id,
+          broker_user_id: selectedBroker.user_id,
           requested_path: "/dashboard",
-          attorney_portal_url: attorneyPortalUrl,
+          broker_portal_url: brokerPortalUrl,
         },
       });
 
       if (fnError) {
-        throw new Error(fnError.message || "Failed to create lawyer portal launch");
+        throw new Error(fnError.message || "Failed to create broker portal launch");
       }
 
       if (!data?.actionLink || typeof data.actionLink !== "string") {
@@ -460,38 +419,38 @@ const LawyerManagementPage = () => {
       popup.location.replace(data.actionLink);
 
       toast({
-        title: "Lawyer portal opened",
-        description: `${pickFirstString(selectedLawyer.profile, ["full_name"]) ?? selectedLawyer.email ?? "Selected lawyer"} opened in a new lawyer portal window.`,
+        title: "Broker portal opened",
+        description: `${pickFirstString(selectedBroker.profile, ["full_name"]) ?? selectedBroker.email ?? "Selected broker"} opened in a new broker portal window.`,
       });
     } catch (launchError) {
       popup.close();
       toast({
-        title: "Unable to open lawyer portal",
+        title: "Unable to open broker portal",
         description:
           launchError instanceof Error
             ? launchError.message
-            : "The lawyer portal launch could not be created.",
+            : "The broker portal launch could not be created.",
         variant: "destructive",
       });
     } finally {
       setLaunchingUserId(null);
     }
-  }, [selectedLawyer, attorneyPortalUrl, toast]);
+  }, [selectedBroker, brokerPortalUrl, toast]);
 
   return (
     <div className="dashboard-premium min-h-full px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1400px] space-y-5">
         <div className="space-y-1">
-          <h1 className="text-lg font-bold text-[var(--dash-text)]">Lawyer Management</h1>
+          <h1 className="text-lg font-bold text-[var(--dash-text)]">Broker Management</h1>
           <p className="text-[12px] text-[var(--dash-text-muted)] mt-0.5">
-            Search a lawyer and open their portal instantly. This keeps the workflow fast while your onboarding session stays in place.
+            Search a broker and open their portal instantly. This keeps the workflow fast while your onboarding session stays in place.
           </p>
         </div>
 
         <SectionCard
           icon={<Search className="h-3.5 w-3.5" />}
-          title="Find Lawyer"
-          description="Search by lawyer name, firm, email, state, or user ID."
+          title="Find Broker"
+          description="Search by broker name, company, email, campaign, state, model, or user ID."
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
@@ -500,7 +459,7 @@ const LawyerManagementPage = () => {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 disabled={loading}
-                placeholder="Search lawyer accounts..."
+                placeholder="Search broker accounts..."
                 className={cn(DASH_INPUT_CLASS, "pl-9")}
               />
             </div>
@@ -528,34 +487,34 @@ const LawyerManagementPage = () => {
         <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
           <SectionCard
             icon={<UserRound className="h-3.5 w-3.5" />}
-            title="Lawyer Accounts"
-            description={`${filteredLawyers.length} result${filteredLawyers.length === 1 ? "" : "s"}`}
+            title="Broker Accounts"
+            description={`${filteredBrokers.length} result${filteredBrokers.length === 1 ? "" : "s"}`}
             bodyClassName="p-3"
           >
             {loading ? (
               <div className="px-2 py-10">
-                <LogoLoader label="Loading lawyer accounts..." />
+                <LogoLoader label="Loading broker accounts..." />
               </div>
-            ) : filteredLawyers.length === 0 ? (
+            ) : filteredBrokers.length === 0 ? (
               <div className="rounded-xl border border-dashed border-[var(--dash-border)] bg-white/[0.02] px-4 py-12 text-center">
-                <p className="text-[12px] text-[var(--dash-text-muted)]">No lawyer accounts matched your search.</p>
+                <p className="text-[12px] text-[var(--dash-text-muted)]">No broker accounts matched your search.</p>
               </div>
             ) : (
               <div className={cn("max-h-[640px] space-y-2 overflow-auto pr-1", DASH_SCROLLBAR_CLASS)}>
-                {filteredLawyers.map((lawyer) => {
+                {filteredBrokers.map((broker) => {
                   const fullName =
-                    pickFirstString(lawyer.profile, ["full_name", "display_name", "name"]) ||
-                    lawyer.display_name ||
-                    lawyer.email ||
-                    "Unnamed lawyer";
-                  const firmName = pickFirstString(lawyer.profile, ["firm_name", "company"]);
-                  const isSelected = lawyer.user_id === selectedUserId;
+                    pickFirstString(broker.profile, ["full_name", "display_name", "name"]) ||
+                    broker.display_name ||
+                    broker.email ||
+                    "Unnamed broker";
+                  const companyName = pickFirstString(broker.profile, ["company_name", "company"]);
+                  const isSelected = broker.user_id === selectedUserId;
 
                   return (
                     <button
-                      key={lawyer.user_id}
+                      key={broker.user_id}
                       type="button"
-                      onClick={() => setSelectedUserId(lawyer.user_id)}
+                      onClick={() => setSelectedUserId(broker.user_id)}
                       className={cn(
                         "w-full rounded-xl border px-4 py-3 text-left transition-all",
                         isSelected
@@ -567,28 +526,28 @@ const LawyerManagementPage = () => {
                         <div className="min-w-0">
                           <div className="truncate text-[13px] font-semibold text-[var(--dash-text)]">{fullName}</div>
                           <div className="mt-0.5 truncate text-[11px] text-[var(--dash-text-muted)]">
-                            {lawyer.email || "No email available"}
+                            {broker.email || "No email available"}
                           </div>
-                          {firmName ? (
-                            <div className="mt-0.5 truncate text-[11px] text-[var(--dash-text-muted)]">{firmName}</div>
+                          {companyName ? (
+                            <div className="mt-0.5 truncate text-[11px] text-[var(--dash-text-muted)]">{companyName}</div>
                           ) : null}
                         </div>
 
                         <Badge
                           variant="outline"
-                          className={cn("shrink-0 text-[10px]", getAccountStatusBadgeClass(lawyer.account_status))}
+                          className={cn("shrink-0 text-[10px]", getAccountStatusBadgeClass(broker.account_status))}
                         >
-                          {formatAccountStatusLabel(lawyer.account_status)}
+                          {formatAccountStatusLabel(broker.account_status)}
                         </Badge>
                       </div>
 
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-[var(--dash-text-muted)]">
-                        <span>{lawyer.openOrders} open orders</span>
-                        {pickStates(lawyer.profile)
+                        <span>{broker.teamMembers} team members</span>
+                        {pickArray(broker.profile, "active_states")
                           .slice(0, 2)
                           .map((state) => (
                             <Badge
-                              key={`${lawyer.user_id}-${state}`}
+                              key={`${broker.user_id}-${state}`}
                               variant="outline"
                               className="border-[var(--dash-border)] bg-background/80 text-[10px] text-[var(--dash-text-muted)]"
                             >
@@ -605,14 +564,14 @@ const LawyerManagementPage = () => {
 
           <SectionCard
             icon={<Building2 className="h-3.5 w-3.5" />}
-            title="Lawyer Details"
-            description="Review the account and open the lawyer portal."
+            title="Broker Details"
+            description="Review the account and open the broker portal."
           >
             {loading ? (
               <div className="rounded-2xl border border-dashed border-[var(--dash-border)] bg-white/[0.02] px-6 py-16 text-center">
-                <LogoLoader label="Preparing lawyer details..." />
+                <LogoLoader label="Preparing broker details..." />
               </div>
-            ) : selectedLawyer ? (
+            ) : selectedBroker ? (
               <div className="space-y-5">
                 <div className="rounded-2xl border border-[#AE4010]/50 bg-[linear-gradient(135deg,rgba(174,64,16,0.12)_0%,rgba(174,64,16,0.05)_42%,rgba(174,64,16,0)_100%)] p-5">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -624,54 +583,51 @@ const LawyerManagementPage = () => {
                         <div>
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                             <div className="text-lg font-semibold text-[var(--dash-text)]">
-                              {pickFirstString(selectedLawyer.profile, ["full_name", "display_name", "name"]) ||
-                                selectedLawyer.display_name ||
-                                selectedLawyer.email ||
-                                "Unnamed lawyer"}
+                              {pickFirstString(selectedBroker.profile, ["full_name", "display_name", "name"]) ||
+                                selectedBroker.display_name ||
+                                selectedBroker.email ||
+                                "Unnamed broker"}
                             </div>
-                            {pickFirstString(selectedLawyer.profile, ["direct_phone"]) ? (
+                            {pickFirstString(selectedBroker.profile, ["direct_phone"]) ? (
                               <div className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--dash-text-muted)]">
                                 <Phone className="h-3.5 w-3.5" />
-                                {pickFirstString(selectedLawyer.profile, ["direct_phone"])}
+                                {pickFirstString(selectedBroker.profile, ["direct_phone"])}
                               </div>
                             ) : null}
                           </div>
                           <div className="text-[12px] text-[var(--dash-text-muted)]">
-                            {pickFirstString(selectedLawyer.profile, ["firm_name", "company"]) || "No firm name on file"}
+                            {pickFirstString(selectedBroker.profile, ["company_name", "company"]) || "No company name on file"}
                           </div>
                         </div>
                       </div>
 
                       <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline" className={getAccountStatusBadgeClass(selectedLawyer.account_status)}>
-                          {formatAccountStatusLabel(selectedLawyer.account_status)}
+                        <Badge variant="outline" className={getAccountStatusBadgeClass(selectedBroker.account_status)}>
+                          {formatAccountStatusLabel(selectedBroker.account_status)}
                         </Badge>
+                        {pickFirstString(selectedBroker.profile, ["primary_campaign"]) ? (
+                          <Badge variant="outline" className="border-[#AE4010]/30 bg-[#AE4010]/10 text-[#AE4010]">
+                            {pickFirstString(selectedBroker.profile, ["primary_campaign"])}
+                          </Badge>
+                        ) : null}
                       </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
                       <Button
-                        variant="outline"
-                        onClick={() => navigate(`/account-management/lawyer-profiles/${selectedLawyer.user_id}`)}
-                        className="border-[var(--dash-border)] bg-background/70 text-[var(--dash-text-muted)] hover:bg-white/[0.03] hover:text-[var(--dash-text)]"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        View Profile
-                      </Button>
-                      <Button
                         onClick={handleOpenPortal}
                         disabled={
-                          launchingUserId === selectedLawyer.user_id ||
-                          isUpdatingSelectedLawyerStatus ||
-                          !selectedLawyerIsActive
+                          launchingUserId === selectedBroker.user_id ||
+                          isUpdatingSelectedBrokerStatus ||
+                          !selectedBrokerIsActive
                         }
                         className="bg-[#AE4010] text-white hover:bg-[#7c2c0a] disabled:opacity-50"
                       >
                         <ArrowUpRight className="h-4 w-4" />
-                        {launchingUserId === selectedLawyer.user_id
+                        {launchingUserId === selectedBroker.user_id
                           ? "Opening..."
-                          : selectedLawyerIsActive
-                            ? "Open Lawyer Portal"
+                          : selectedBrokerIsActive
+                            ? "Open Broker Portal"
                             : "Activate To Open"}
                       </Button>
                     </div>
@@ -689,38 +645,40 @@ const LawyerManagementPage = () => {
                         <div>
                           <div className="text-[12px] font-medium text-[var(--dash-text)]">Primary Email</div>
                           <div className="text-[12px] text-[var(--dash-text-muted)]">
-                            {selectedLawyer.email ||
-                              pickFirstString(selectedLawyer.profile, ["primary_email", "email"]) ||
+                            {selectedBroker.email ||
+                              pickFirstString(selectedBroker.profile, ["primary_email", "email"]) ||
                               "No email available"}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <UserRound className="mt-0.5 h-4 w-4 text-[var(--dash-text-muted)]" />
+                        <BriefcaseBusiness className="mt-0.5 h-4 w-4 text-[var(--dash-text-muted)]" />
                         <div>
-                          <div className="text-[12px] font-medium text-[var(--dash-text)]">Account Type</div>
+                          <div className="text-[12px] font-medium text-[var(--dash-text)]">Active Models</div>
                           <div className="mt-1 text-[13px] text-[var(--dash-text-muted)]">
-                            {formatAccountTypeLabel(pickFirstString(selectedLawyer.profile, ["account_type"]))}
+                            {pickArray(selectedBroker.profile, "active_models").length > 0
+                              ? pickArray(selectedBroker.profile, "active_models").join(", ")
+                              : "No active models recorded"}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
                         <MapPin className="mt-0.5 h-4 w-4 text-[var(--dash-text-muted)]" />
                         <div>
-                          <div className="text-[12px] font-medium text-[var(--dash-text)]">Licensed States</div>
+                          <div className="text-[12px] font-medium text-[var(--dash-text)]">Active States</div>
                           <div className="text-[12px] text-[var(--dash-text-muted)]">
-                            {pickStates(selectedLawyer.profile).length > 0
-                              ? pickStates(selectedLawyer.profile).join(", ")
-                              : "No licensed states recorded"}
+                            {pickArray(selectedBroker.profile, "active_states").length > 0
+                              ? pickArray(selectedBroker.profile, "active_states").join(", ")
+                              : "No active states recorded"}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
                         <Building2 className="mt-0.5 h-4 w-4 text-[var(--dash-text-muted)]" />
                         <div>
-                          <div className="text-[12px] font-medium text-[var(--dash-text)]">Primary Location</div>
+                          <div className="text-[12px] font-medium text-[var(--dash-text)]">Primary Campaign</div>
                           <div className="text-[12px] text-[var(--dash-text-muted)]">
-                            {pickFirstString(selectedLawyer.profile, ["primary_city", "state"]) || "Not set"}
+                            {pickFirstString(selectedBroker.profile, ["primary_campaign"]) || "Not set"}
                           </div>
                         </div>
                       </div>
@@ -735,9 +693,9 @@ const LawyerManagementPage = () => {
                       <div className="flex items-start gap-3">
                         <BriefcaseBusiness className="mt-0.5 h-4 w-4 text-[var(--dash-text-muted)]" />
                         <div>
-                          <div className="text-[12px] font-medium text-[var(--dash-text)]">Open Orders</div>
+                          <div className="text-[12px] font-medium text-[var(--dash-text)]">Broker Team Members</div>
                           <div className="text-[12px] text-[var(--dash-text-muted)]">
-                            {selectedLawyer.openOrders} active orders currently assigned
+                            {selectedBroker.teamMembers} credentialed team member{selectedBroker.teamMembers === 1 ? "" : "s"}
                           </div>
                         </div>
                       </div>
@@ -747,7 +705,39 @@ const LawyerManagementPage = () => {
                         <div>
                           <div className="text-[12px] font-medium text-[var(--dash-text)]">Last Updated</div>
                           <div className="text-[12px] text-[var(--dash-text-muted)]">
-                            {formatDate(selectedLawyer.updated_at)}
+                            {formatDate(selectedBroker.updated_at)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <Building2 className="mt-0.5 h-4 w-4 text-[var(--dash-text-muted)]" />
+                        <div>
+                          <div className="text-[12px] font-medium text-[var(--dash-text)]">Coverage Defaults</div>
+                          <div className="text-[12px] text-[var(--dash-text-muted)]">
+                            {pickFirstString(selectedBroker.profile, ["case_category"]) || "No case category"} /{" "}
+                            {formatSolCriteria(pickFirstString(selectedBroker.profile, ["sol_criteria"]))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <MapPin className="mt-0.5 h-4 w-4 text-[var(--dash-text-muted)]" />
+                        <div>
+                          <div className="text-[12px] font-medium text-[var(--dash-text)]">Price per State</div>
+                          <div className="text-[12px] text-[var(--dash-text-muted)]">
+                            {formatCurrency(selectedBroker.profile?.price_per_state)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <Phone className="mt-0.5 h-4 w-4 text-[var(--dash-text-muted)]" />
+                        <div>
+                          <div className="text-[12px] font-medium text-[var(--dash-text)]">Volume</div>
+                          <div className="text-[12px] text-[var(--dash-text-muted)]">
+                            {formatNumber(selectedBroker.profile?.average_volume)} average volume /{" "}
+                            {formatNumber(selectedBroker.profile?.number_of_attorneys)} attorneys
                           </div>
                         </div>
                       </div>
@@ -755,7 +745,7 @@ const LawyerManagementPage = () => {
                       <div
                         className={cn(
                           "mt-auto rounded-lg px-3 py-3",
-                          selectedLawyerIsActive
+                          selectedBrokerIsActive
                             ? "border border-rose-500/40 bg-[linear-gradient(135deg,rgba(244,63,94,0.14)_0%,rgba(244,63,94,0.08)_46%,rgba(244,63,94,0.03)_100%)]"
                             : "border border-emerald-500/40 bg-[linear-gradient(135deg,rgba(16,185,129,0.14)_0%,rgba(16,185,129,0.08)_46%,rgba(16,185,129,0.03)_100%)]"
                         )}
@@ -763,26 +753,25 @@ const LawyerManagementPage = () => {
                         <div className="flex items-center justify-between gap-4">
                           <div>
                             <div className="text-[12px] font-medium text-[var(--dash-text)]">
-                              {selectedLawyerIsActive ? "Deactivate" : "Activate"}
+                              {selectedBrokerIsActive ? "Deactivate" : "Activate"}
                             </div>
                             <div className="mt-1 text-[11px] text-[var(--dash-text-muted)]">
-                              {selectedLawyerIsActive
-                                ? "Turn off portal access for this lawyer."
-                                : "Restore portal access for this lawyer."}
+                              {selectedBrokerIsActive
+                                ? "Turn off portal access for this broker."
+                                : "Restore portal access for this broker."}
                             </div>
                           </div>
 
                           <Switch
-                            checked={selectedLawyerIsActive}
+                            checked={selectedBrokerIsActive}
                             onCheckedChange={(checked) => {
                               void handleAccountStatusToggle(checked);
                             }}
-                            disabled={isUpdatingSelectedLawyerStatus}
-                            aria-label={selectedLawyerIsActive ? "Deactivate lawyer account" : "Activate lawyer account"}
+                            disabled={isUpdatingSelectedBrokerStatus}
+                            aria-label={selectedBrokerIsActive ? "Deactivate broker account" : "Activate broker account"}
                           />
                         </div>
                       </div>
-
                     </div>
                   </div>
                 </div>
@@ -792,9 +781,9 @@ const LawyerManagementPage = () => {
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#AE4010]/20 bg-[#AE4010]/10 text-[#AE4010]">
                   <UserRound className="h-5 w-5" />
                 </div>
-                <div className="text-[13px] font-medium text-[var(--dash-text)]">Select a lawyer account</div>
+                <div className="text-[13px] font-medium text-[var(--dash-text)]">Select a broker account</div>
                 <div className="mt-1 text-[12px] text-[var(--dash-text-muted)]">
-                  Choose an attorney from the list to review the account and open the portal.
+                  Choose a broker from the list to review the account and open the portal.
                 </div>
               </div>
             )}
@@ -805,4 +794,4 @@ const LawyerManagementPage = () => {
   );
 };
 
-export default LawyerManagementPage;
+export default BrokerManagementPage;

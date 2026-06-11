@@ -78,8 +78,8 @@ Insurance Company: ${lead.insurance_company || 'N/A'}
 Third Party Vehicle Registration: ${lead.third_party_vehicle_registration || 'N/A'}
 Other Party Admit Fault: ${lead.other_party_admit_fault ? 'Yes' : 'No'}
 Passengers Count: ${lead.passengers_count || 0}
-Prior Attorney Involved: ${lead.prior_attorney_involved ? 'Yes' : 'No'}
-Prior Attorney Details: ${lead.prior_attorney_details || 'N/A'}
+Prior Legal Representation: ${lead.prior_attorney_involved ? 'Yes' : 'No'}
+Prior Representation Details: ${lead.prior_attorney_details || 'N/A'}
 
 WITNESS/CONTACT INFORMATION:
 Contact Name: ${lead.contact_name || 'N/A'}
@@ -155,8 +155,8 @@ ${lead.additional_notes}`;
               <div><strong>Third Party Vehicle Registration:</strong> {formatValue(lead.third_party_vehicle_registration)}</div>
               <div><strong>Other Party Admit Fault:</strong> {lead.other_party_admit_fault ? 'Yes' : 'No'}</div>
               <div><strong>Passengers Count:</strong> {lead.passengers_count || 0}</div>
-              <div><strong>Prior Attorney Involved:</strong> {lead.prior_attorney_involved ? 'Yes' : 'No'}</div>
-              <div><strong>Prior Attorney Details:</strong> {formatValue(lead.prior_attorney_details)}</div>
+              <div><strong>Prior Legal Representation:</strong> {lead.prior_attorney_involved ? 'Yes' : 'No'}</div>
+              <div><strong>Prior Representation Details:</strong> {formatValue(lead.prior_attorney_details)}</div>
               
               <br />
               <div><strong>WITNESS/CONTACT INFORMATION:</strong></div>

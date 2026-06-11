@@ -353,7 +353,7 @@ const OrderFulfillmentAssignPage = () => {
 
       toast({
         title: "Assigned",
-        description: `Lead assigned to ${assignedLawyerLabel || "lawyer"}`,
+        description: `Lead assigned to ${assignedLawyerLabel || "broker"}`,
       });
 
       await refresh();
@@ -379,7 +379,7 @@ const OrderFulfillmentAssignPage = () => {
           <h2 className="text-xl font-semibold">Fulfill Order</h2>
           <div className="text-sm text-muted-foreground">
             Order: <span className="font-mono">{orderId}</span>
-            {lawyerLabel ? <span> · Lawyer: {lawyerLabel}</span> : null}
+            {lawyerLabel ? <span> · Broker: {lawyerLabel}</span> : null}
           </div>
         </div>
         <div className="flex items-center gap-2">

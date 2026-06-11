@@ -126,9 +126,9 @@ export function TaskDetailsSheet({
     }
   };
 
-  const openLawyerProfile = () => {
+  const openBrokerProfile = () => {
     if (!task?.lawyer_user_id) return;
-    navigate("/lawyer-management", {
+    navigate("/broker-management", {
       state: { selectedUserId: task.lawyer_user_id },
     });
     onOpenChange(false);
@@ -221,10 +221,10 @@ export function TaskDetailsSheet({
                       <div className="min-w-0">
                         <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                           <BriefcaseBusiness className="h-4 w-4 text-primary" />
-                          Lawyer
+                          Broker
                         </div>
                         <p className="truncate text-base font-semibold">
-                          {lawyerDisplay || "Lawyer not attached"}
+                          {lawyerDisplay || "Broker not attached"}
                         </p>
                         {task.lawyer_firm_name ? (
                           <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
@@ -243,10 +243,10 @@ export function TaskDetailsSheet({
                         type="button"
                         variant="outline"
                         className="border-primary/40 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
-                        onClick={openLawyerProfile}
+                        onClick={openBrokerProfile}
                       >
                         <ExternalLink className="mr-2 h-4 w-4" />
-                        Open Lawyer
+                        Open Broker
                       </Button>
                     </div>
                   </div>
@@ -367,7 +367,7 @@ export function TaskDetailsSheet({
                     value={noteDraft}
                     onChange={(event) => setNoteDraft(event.target.value)}
                     rows={4}
-                    placeholder="Write a concise update, blocker, or lawyer detail."
+                    placeholder="Write a concise update, blocker, or broker detail."
                     className="mt-2 border-border bg-background"
                     disabled={!canEditTask}
                   />

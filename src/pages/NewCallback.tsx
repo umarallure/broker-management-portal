@@ -177,7 +177,7 @@ const NewCallback = () => {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">New Lawyer</h1>
+            <h1 className="text-3xl font-bold">New Broker</h1>
             <p className="text-muted-foreground mt-1">
               Add a new lawyer manually
             </p>
@@ -233,7 +233,7 @@ const NewCallback = () => {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="lawyerFullName">Lawyer Full Name *</Label>
+                  <Label htmlFor="lawyerFullName">Broker Full Name *</Label>
                   <Input
                     id="lawyerFullName"
                     value={lawyerFullName}
@@ -323,7 +323,7 @@ const NewCallback = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cold_call_pipeline">Marketing Pipeline</SelectItem>
-                      <SelectItem value="lawyer_portal">Lawyer Portal</SelectItem>
+                      <SelectItem value="lawyer_portal">Broker Portal</SelectItem>
                       <SelectItem value="submission_portal">Submission Portal</SelectItem>
                     </SelectContent>
                   </Select>

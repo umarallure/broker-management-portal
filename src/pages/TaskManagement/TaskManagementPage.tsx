@@ -469,7 +469,7 @@ const TaskManagementPage = () => {
       const results = await searchLawyerOptions(query);
       setLawyerSearchResults(results);
     } catch (error) {
-      console.error("Error searching lawyers:", error);
+      console.error("Error searching brokers:", error);
       setLawyerSearchResults([]);
     } finally {
       setLawyerSearchLoading(false);
@@ -590,7 +590,7 @@ const TaskManagementPage = () => {
     if (!canAccess) return;
 
     const channel = supabase
-      .channel("lawyer-onboarding-task-management")
+      .channel("broker-onboarding-task-management")
       .on(
         "postgres_changes",
         {
@@ -1196,7 +1196,7 @@ const TaskManagementPage = () => {
                               id="task-search"
                               value={searchTerm}
                               onChange={(event) => setSearchTerm(event.target.value)}
-                              placeholder="Title, lawyer, assignee, tag..."
+                              placeholder="Title, broker, assignee, tag..."
                               className="h-10 pl-9"
                             />
                           </div>

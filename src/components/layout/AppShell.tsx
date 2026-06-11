@@ -4,8 +4,6 @@ import {
   BookOpen,
   BriefcaseBusiness,
   Building2,
-  ChevronDown,
-  ChevronRight,
   ClipboardList,
   Grid3X3,
   LayoutDashboard,
@@ -22,8 +20,6 @@ import {
   Sun,
   Moon,
 } from 'lucide-react';
-
-import { TbUserShield } from "react-icons/tb";
 
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -42,16 +38,9 @@ import { supabase } from '@/integrations/supabase/client';
 type NavItem = {
   label: string;
   icon: ReactNode;
-  to?: string;
+  to: string;
   end?: boolean;
   show?: boolean;
-  groupKey?: string;
-  children?: Array<{
-    label: string;
-    to: string;
-    end?: boolean;
-    show?: boolean;
-  }>;
 };
 
 const linkBaseClass =
@@ -101,9 +90,6 @@ const AppShell = ({
   });
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    account_management: location.pathname.startsWith('/account-management'),
-  });
 
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
@@ -164,12 +150,6 @@ const AppShell = ({
   }, [isDailyDealFlowRoute, location.pathname]);
 
   useEffect(() => {
-    if (location.pathname.startsWith('/account-management')) {
-      setExpandedGroups((prev) => ({ ...prev, account_management: true }));
-    }
-  }, [location.pathname]);
-
-  useEffect(() => {
     // If a route forces a default (e.g., Daily Outreach Report), apply it immediately.
     if (defaultSidebarCollapsed === undefined) return;
     if (!isDailyDealFlowRoute) return;
@@ -227,7 +207,7 @@ const AppShell = ({
         icon: <Package className="h-4 w-4 text-current" />,
       },
       {
-        label: 'Lawyer Contacts',
+        label: 'Broker Contacts',
         to: '/leads',
         icon: <Users className="h-4 w-4 text-current" />,
         end: true,
@@ -238,7 +218,7 @@ const AppShell = ({
         icon: <Eye className="h-4 w-4 text-current" />,
       },
       {
-        label: 'Lawyer Portal',
+        label: 'Broker Portal',
         to: '/submission-portal',
         icon: <CheckCircle className="h-4 w-4 text-current" />,
       },
@@ -253,8 +233,8 @@ const AppShell = ({
         icon: <Building2 className="h-4 w-4 text-current" />,
       },
       {
-        label: 'Lawyer Management',
-        to: '/lawyer-management',
+        label: 'Broker Management',
+        to: '/broker-management',
         icon: <BriefcaseBusiness className="h-4 w-4 text-current" />,
       },
       {
@@ -271,29 +251,6 @@ const AppShell = ({
         label: 'Product Guide',
         to: '/product-guide',
         icon: <BookOpen className="h-4 w-4 text-current" />,
-      },
-      {
-        label: 'Account Management',
-        icon: <TbUserShield className="h-4 w-4 text-current" />,
-        groupKey: 'account_management',
-        children: [
-          {
-            label: 'Quick Actions',
-            to: '/account-management/quick-actions',
-          },
-          {
-            label: 'Order Management',
-            to: '/account-management/orders',
-          },
-          {
-            label: 'Onboarding Management',
-            to: '/account-management/onboarding',
-          },
-          {
-            label: 'Lawyer Profile Management',
-            to: '/account-management/lawyer-profiles',
-          },
-        ],
       },
       {
         label: 'Marketing Team',
@@ -363,7 +320,7 @@ const AppShell = ({
           >
             <img
               src={isSidebarCollapsed ? '/assets/logo-collapse.png' : '/assets/logo.png'}
-              alt="Lawyer Onboarding Portal"
+              alt="Broker Management Portal"
               className={isSidebarCollapsed ? "h-10 w-auto max-w-full" : "h-7 w-auto"}
             />
           </div>
@@ -372,84 +329,10 @@ const AppShell = ({
             className="px-2 py-3 space-y-1 flex-1 overflow-y-auto"
           >
             {navItems.map((item) => {
-              const visibleChildren = (item.children || []).filter((child) => child.show !== false);
-              const hasChildren = visibleChildren.length > 0;
-              const isGroupOpen = item.groupKey ? Boolean(expandedGroups[item.groupKey]) : false;
-              const hasActiveChild = visibleChildren.some((child) => isNavItemActive(child.to, child.end));
-              const primaryTo = item.to || visibleChildren[0]?.to;
-
-              if (hasChildren && isSidebarCollapsed && primaryTo) {
-                return (
-                  <NavLink
-                    key={item.groupKey || item.label}
-                    to={primaryTo}
-                    className={() =>
-                      `${linkBaseClass} justify-center px-0 ${
-                        hasActiveChild
-                          ? "bg-primary/10 text-primary border-primary/20"
-                          : "text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/20"
-                      }`
-                    }
-                    title={item.label}
-                  >
-                    {item.icon}
-                  </NavLink>
-                );
-              }
-
-              if (hasChildren) {
-                return (
-                  <div key={item.groupKey || item.label} className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedGroups((prev) => ({
-                          ...prev,
-                          [item.groupKey || item.label]: !prev[item.groupKey || item.label],
-                        }))
-                      }
-                      className={`${linkBaseClass} w-full justify-between text-left ${
-                        hasActiveChild
-                          ? "bg-primary/10 text-primary border-primary/20"
-                          : "text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/20"
-                      }`}
-                    >
-                      <span className="flex items-center gap-2 min-w-0">
-                        {item.icon}
-                        <span className="truncate">{item.label}</span>
-                      </span>
-                      {isGroupOpen ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-                    </button>
-
-                    {isGroupOpen ? (
-                      <div className="ml-4 space-y-1 border-l border-sidebar-border pl-3">
-                        {visibleChildren.map((child) => (
-                          <NavLink
-                            key={child.to}
-                            to={child.to}
-                            end={child.end}
-                            className={() =>
-                              `${linkBaseClass} py-1.5 ${
-                                isNavItemActive(child.to, child.end)
-                                  ? "bg-primary/10 text-primary border-primary/20"
-                                  : "text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/20"
-                              }`
-                            }
-                          >
-                            <Package className="h-3.5 w-3.5 text-current" />
-                            <span>{child.label}</span>
-                          </NavLink>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              }
-
               return (
                 <NavLink
                   key={item.to}
-                  to={item.to!}
+                  to={item.to}
                   end={item.end}
                   className={() =>
                     `${linkBaseClass} ${

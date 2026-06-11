@@ -1,24 +1,24 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import type React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  User,
-  Briefcase,
-  MapPin,
-  Scale,
-  Users,
-  Plus,
-  Trash2,
-  ChevronDown,
-  ChevronUp,
   AlertTriangle,
+  Building2,
   CheckCircle2,
   Eye,
   EyeOff,
   Loader2,
+  MapPin,
+  Plus,
+  Trash2,
+  User,
+  Users,
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { MultiSelect } from '@/components/ui/multi-select';
 import {
   Select,
@@ -27,32 +27,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { US_STATES } from '@/lib/us-states';
 import {
-  type BarLicense,
-  type TeamMemberData,
-  type WeeklyAvailability,
+  BROKER_MODEL_OPTIONS,
+  BROKER_SECTION_OPTIONS,
+  CASE_CATEGORY_OPTIONS,
   DEFAULT_WEEKLY_AVAILABILITY,
-  PRACTICE_FOCUS_OPTIONS,
-  INJURY_CATEGORY_OPTIONS,
-  EXCLUSIONARY_CRITERIA_OPTIONS,
-  onboardingPayloadSchema,
+  LANGUAGE_OPTIONS,
+  MIN_PRICE_PER_STATE,
+  POSITION_OPTIONS,
+  SOL_CRITERIA_OPTIONS,
+  type BrokerMemberData,
+  type BrokerSection,
+  type WeeklyAvailability,
   deriveShiftAvailability,
+  onboardingPayloadSchema,
 } from '@/lib/onboarding-schema';
 
-/* ── Constants ── */
-
-const STATE_CODE_OPTIONS = US_STATES.map((s) => s.code);
-const LANGUAGE_OPTIONS = ['English', 'Spanish'];
-const POSITION_OPTIONS = [
-  { value: 'accounting', label: 'Accounting' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'invoicing', label: 'Invoicing' },
-  { value: 'intake_team', label: 'Intake Team' },
-  { value: 'other', label: 'Other' },
-];
+const STATE_CODE_OPTIONS = US_STATES.map((state) => ({ value: state.code, label: `${state.code} - ${state.name}` }));
 const DASH_SELECT_TRIGGER_CLASS =
   'h-9 border-[var(--dash-border)] bg-background/80 text-[13px] text-[var(--dash-text)] backdrop-blur-sm focus:ring-[#AE4010]/30 hover:border-[var(--dash-border-hover)]';
 const DASH_SELECT_CONTENT_CLASS =
@@ -61,7 +56,7 @@ const DASH_MULTISELECT_CLASS =
   'border-[var(--dash-border)] bg-background/80 text-[13px] text-[var(--dash-text)] backdrop-blur-sm hover:border-[var(--dash-border-hover)]';
 const DASH_MULTISELECT_COMPACT_CLASS = `${DASH_MULTISELECT_CLASS} min-h-9 h-9`;
 
-/* ── Reusable UI primitives ── */
+const ALL_BROKER_SECTIONS = BROKER_SECTION_OPTIONS.map((section) => section.value);
 
 function SectionCard({
   icon,
@@ -79,16 +74,13 @@ function SectionCard({
       className="group/section dash-animate-in relative isolate overflow-hidden rounded-2xl border border-[#AE4010]/50 bg-[var(--dash-surface)] backdrop-blur-[var(--dash-blur)] shadow-[var(--dash-shadow)] transition-all duration-300 hover:border-[#AE4010]/65 hover:shadow-[0_14px_30px_rgba(174,64,16,0.14)] focus-within:border-[#AE4010]/75 focus-within:shadow-[0_16px_34px_rgba(174,64,16,0.18)]"
       style={{ animationDelay: `${delay}ms` }}
     >
-      {/* Card header */}
-      <div className="relative flex items-center gap-3 px-5 py-3.5 border-b border-[#AE4010]/12 bg-[linear-gradient(90deg,rgba(174,64,16,0.18)_0%,rgba(174,64,16,0.1)_28%,rgba(174,64,16,0.04)_54%,rgba(174,64,16,0)_84%)]">
-        {/* Bottom accent rule */}
-        <div className="absolute left-0 right-0 bottom-0 h-[2px] bg-gradient-to-r from-[#AE4010] via-[#AE4010]/50 to-transparent" />
+      <div className="relative flex items-center gap-3 border-b border-[#AE4010]/12 bg-[linear-gradient(90deg,rgba(174,64,16,0.18)_0%,rgba(174,64,16,0.1)_28%,rgba(174,64,16,0.04)_54%,rgba(174,64,16,0)_84%)] px-5 py-3.5">
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#AE4010] via-[#AE4010]/50 to-transparent" />
         <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#AE4010]/45 bg-[#AE4010]/10">
           <span className="text-[#AE4010]">{icon}</span>
         </div>
         <h2 className="text-[13px] font-semibold text-[var(--dash-text)]">{title}</h2>
       </div>
-      {/* Card body */}
       <div className="p-5">{children}</div>
     </div>
   );
@@ -96,20 +88,20 @@ function SectionCard({
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <label className="block text-[12px] font-medium text-[var(--dash-text)] mb-1">
+    <label className="mb-1 block text-[12px] font-medium text-[var(--dash-text)]">
       {children}
-      {required && <span className="text-red-400 ml-0.5">*</span>}
+      {required ? <span className="ml-0.5 text-red-400">*</span> : null}
     </label>
   );
 }
 
 function FieldHelper({ children }: { children: React.ReactNode }) {
-  return <p className="text-[11px] text-[var(--dash-text-muted)] mt-0.5">{children}</p>;
+  return <p className="mt-0.5 text-[11px] text-[var(--dash-text-muted)]">{children}</p>;
 }
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="text-[11px] text-red-400 mt-0.5">{message}</p>;
+  return <p className="mt-0.5 text-[11px] text-red-400">{message}</p>;
 }
 
 function FormInput({
@@ -128,10 +120,10 @@ function FormInput({
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
       <Input
-        className="h-9 border-[var(--dash-border)] bg-transparent text-[13px] text-[var(--dash-text)] placeholder:text-[var(--dash-text-muted)]/50 focus:ring-[#AE4010]/30 focus:border-[#AE4010]/40"
+        className="h-9 border-[var(--dash-border)] bg-transparent text-[13px] text-[var(--dash-text)] placeholder:text-[var(--dash-text-muted)]/50 focus:border-[#AE4010]/40 focus:ring-[#AE4010]/30"
         {...props}
       />
-      {helper && <FieldHelper>{helper}</FieldHelper>}
+      {helper ? <FieldHelper>{helper}</FieldHelper> : null}
       <FieldError message={error} />
     </div>
   );
@@ -143,25 +135,25 @@ function ToggleGroup({
   options,
 }: {
   value: string;
-  onChange: (v: string) => void;
+  onChange: (value: string) => void;
   options: { value: string; label: string; activeColor: string }[];
 }) {
   return (
-    <div className="flex gap-1">
-      {options.map((opt) => {
-        const isActive = value === opt.value;
+    <div className="flex flex-wrap gap-1">
+      {options.map((option) => {
+        const isActive = value === option.value;
         return (
           <button
-            key={opt.value}
+            key={option.value}
             type="button"
-            onClick={() => onChange(isActive ? '' : opt.value)}
-            className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-all border ${
+            onClick={() => onChange(isActive ? '' : option.value)}
+            className={`rounded-md border px-3 py-1.5 text-[11px] font-medium transition-all ${
               isActive
-                ? `${opt.activeColor} border-current`
+                ? `${option.activeColor} border-current`
                 : 'border-[#AE4010]/20 text-[var(--dash-text-muted)] hover:bg-white/[0.03]'
             }`}
           >
-            {opt.label}
+            {option.label}
           </button>
         );
       })}
@@ -183,65 +175,52 @@ function StatusBanner({
   }[type];
 
   return (
-    <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border ${config.bg} ${config.border} ${config.text}`}>
+    <div className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 ${config.bg} ${config.border} ${config.text}`}>
       {config.icon}
       <span className="text-[12px] font-medium">{message}</span>
     </div>
   );
 }
 
-/* ── Blank team member ── */
+type BrokerMemberForm = Omit<BrokerMemberData, 'position_other'> & {
+  position_other?: string | null;
+  confirmPassword: string;
+};
 
-function blankTeamMember(): Omit<TeamMemberData, 'position_other'> & { position_other?: string | null } {
+function blankBrokerMember(): BrokerMemberForm {
   return {
     full_name: '',
     email: '',
+    password: '',
+    confirmPassword: '',
     phone: '',
     state: undefined,
     position: 'intake_team',
     position_other: '',
     weekly_availability: { ...DEFAULT_WEEKLY_AVAILABILITY },
     holiday_hours: [],
+    shift_availability: 'full_day',
+    allowed_sections: ['dashboard'],
   };
 }
-
-function hasMeaningfulTeamMemberData(member: ReturnType<typeof blankTeamMember>) {
-  const position = member.position ?? '';
-
-  return Boolean(
-    (member.full_name ?? '').trim() ||
-    (member.email ?? '').trim() ||
-    (member.phone ?? '').trim() ||
-    member.state ||
-    (position === 'other' ? (member.position_other ?? '').trim() : '') ||
-    (position && position !== 'intake_team')
-  );
-}
-
-/* ══════════════════════════════════════════════════════════
-   Main page component
-   ══════════════════════════════════════════════════════════ */
 
 export default function OnboardingPortalPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const disclaimerPanelId = 'onboarding-important-notes';
 
-  /* ── Account state ── */
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  /* ── Attorney profile state ── */
   const [fullName, setFullName] = useState('');
-  const [firmName, setFirmName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [bio, setBio] = useState('');
-  const [yearsExperience, setYearsExperience] = useState('');
+  const [yearsInBusiness, setYearsInBusiness] = useState('');
   const [languages, setLanguages] = useState<string[]>([]);
-  const [barLicenses, setBarLicenses] = useState<BarLicense[]>([]);
+  const [activeModels, setActiveModels] = useState<string[]>([]);
+
   const [primaryEmail, setPrimaryEmail] = useState('');
-  const [primaryEmailTouched, setPrimaryEmailTouched] = useState(false);
   const [personalEmail, setPersonalEmail] = useState('');
   const [directPhone, setDirectPhone] = useState('');
   const [preferredContact, setPreferredContact] = useState('');
@@ -251,100 +230,87 @@ export default function OnboardingPortalPage() {
   const [addressState, setAddressState] = useState('');
   const [zip, setZip] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
-  const [assistantName, setAssistantName] = useState('');
-  const [assistantEmail, setAssistantEmail] = useState('');
-  const [licensedStates, setLicensedStates] = useState<string[]>([]);
-  const [primaryLocation, setPrimaryLocation] = useState('');
-  const [countiesCovered, setCountiesCovered] = useState<string[]>([]);
-  const [countiesInput, setCountiesInput] = useState('');
-  const [federalCourts, setFederalCourts] = useState('');
-  const [primaryPracticeFocus, setPrimaryPracticeFocus] = useState('');
-  const [injuryCategories, setInjuryCategories] = useState<string[]>([]);
-  const [exclusionaryCriteria, setExclusionaryCriteria] = useState<string[]>([]);
+  const [linkedinUsername, setLinkedinUsername] = useState('');
+  const [instagramUsername, setInstagramUsername] = useState('');
+  const [facebookUsername, setFacebookUsername] = useState('');
 
-  /* ── Team members state ── */
-  const [teamMembers, setTeamMembers] = useState<ReturnType<typeof blankTeamMember>[]>([]);
+  const [activeStates, setActiveStates] = useState<string[]>([]);
+  const [primaryCampaign, setPrimaryCampaign] = useState('');
+  const [numberOfAttorneys, setNumberOfAttorneys] = useState('');
+  const [averageVolume, setAverageVolume] = useState('');
+  const [pricePerState, setPricePerState] = useState(String(MIN_PRICE_PER_STATE));
+  const [caseCategory, setCaseCategory] = useState('');
+  const [solCriteria, setSolCriteria] = useState('');
 
-  /* ── UI state ── */
+  const [brokerMembers, setBrokerMembers] = useState<BrokerMemberForm[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [submitWarnings, setSubmitWarnings] = useState<string[]>([]);
-  const [disclaimerOpen, setDisclaimerOpen] = useState(true);
 
-  useEffect(() => {
-    if (!primaryEmailTouched) {
-      setPrimaryEmail(email);
-    }
-  }, [email, primaryEmailTouched]);
+  const e = (key: string) => fieldErrors[key];
 
-  /* ── Bar license helpers ── */
-  const addBarLicense = () => setBarLicenses((prev) => [...prev, { state: 'FL' as any, number: '' }]);
-  const removeBarLicense = (idx: number) => setBarLicenses((prev) => prev.filter((_, i) => i !== idx));
-  const updateBarLicense = (idx: number, field: 'state' | 'number', value: string) => {
-    setBarLicenses((prev) => prev.map((l, i) => (i === idx ? { ...l, [field]: value } : l)));
+  const addBrokerMember = () => setBrokerMembers((current) => [...current, blankBrokerMember()]);
+  const removeBrokerMember = (index: number) => setBrokerMembers((current) => current.filter((_, i) => i !== index));
+  const updateBrokerMember = (index: number, field: keyof BrokerMemberForm, value: unknown) => {
+    setBrokerMembers((current) => current.map((member, i) => (i === index ? { ...member, [field]: value } : member)));
   };
 
-  /* ── Team member helpers ── */
-  const addTeamMember = () => setTeamMembers((prev) => [...prev, blankTeamMember()]);
-  const removeTeamMember = (idx: number) => setTeamMembers((prev) => prev.filter((_, i) => i !== idx));
-  const updateTeamMember = (idx: number, field: string, value: unknown) => {
-    setTeamMembers((prev) => prev.map((m, i) => (i === idx ? { ...m, [field]: value } : m)));
+  const toggleBrokerMemberSection = (index: number, section: BrokerSection) => {
+    setBrokerMembers((current) =>
+      current.map((member, i) => {
+        if (i !== index) return member;
+        const selected = member.allowed_sections ?? [];
+        return {
+          ...member,
+          allowed_sections: selected.includes(section)
+            ? selected.filter((value) => value !== section)
+            : [...selected, section],
+        };
+      }),
+    );
   };
 
-  /* ── Counties chip input ── */
-  const handleCountiesKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      const val = countiesInput.trim();
-      if (val && !countiesCovered.includes(val)) {
-        setCountiesCovered((prev) => [...prev, val]);
-      }
-      setCountiesInput('');
-    }
+  const setBrokerMemberSections = (index: number, sections: BrokerSection[]) => {
+    setBrokerMembers((current) => current.map((member, i) => (i === index ? { ...member, allowed_sections: sections } : member)));
   };
-  const removeCounty = (county: string) => setCountiesCovered((prev) => prev.filter((c) => c !== county));
 
-  /* ── Submit ── */
   const handleSubmit = useCallback(async () => {
     setFieldErrors({});
     setSubmitResult(null);
     setSubmitWarnings([]);
 
-    const transformedMembers = teamMembers
-      .filter(hasMeaningfulTeamMemberData)
-      .map((member) => ({
-        ...member,
-        position_other: member.position === 'other' ? member.position_other || undefined : undefined,
-        shift_availability: deriveShiftAvailability(member.weekly_availability as WeeklyAvailability),
-      }));
-
     const payloadResult = onboardingPayloadSchema.safeParse({
       account: { email, password, confirmPassword },
-      attorneyProfile: {
+      brokerProfile: {
         fullName,
-        firmName,
+        companyName,
         bio,
-        yearsExperience,
+        yearsInBusiness,
         languages,
-        barLicenses,
-        primaryEmail: primaryEmail || undefined,
+        primaryEmail,
         personalEmail,
         directPhone,
         preferredContact: preferredContact || undefined,
         officeAddress: { street, suite, city, state: addressState, zip },
         websiteUrl,
-        assistantName,
-        assistantEmail,
-        licensedStates,
-        primaryCity: primaryLocation,
-        countiesCovered,
-        federalCourts,
-        primaryPracticeFocus,
-        injuryCategories,
-        exclusionaryCriteria,
+        linkedinUsername,
+        instagramUsername,
+        facebookUsername,
+        activeModels,
+        activeStates,
+        primaryCampaign: primaryCampaign || undefined,
+        numberOfAttorneys,
+        averageVolume,
+        pricePerState,
+        caseCategory: caseCategory || undefined,
+        solCriteria: solCriteria || undefined,
       },
-      teamMembers: transformedMembers,
+      brokerMembers: brokerMembers.map((member) => ({
+        ...member,
+        position_other: member.position === 'other' ? member.position_other || undefined : undefined,
+        shift_availability: deriveShiftAvailability(member.weekly_availability as WeeklyAvailability),
+      })),
     });
 
     if (!payloadResult.success) {
@@ -353,33 +319,32 @@ export default function OnboardingPortalPage() {
         errors[issue.path.join('.')] = issue.message;
       });
       setFieldErrors(errors);
-      const errorList = Object.entries(errors).map(([, msg]) => msg).join(', ');
-      setSubmitResult({ type: 'error', message: errorList });
-      // Scroll to top so the user sees the banner
+      setSubmitResult({ type: 'error', message: Object.values(errors).join(', ') || 'Validation failed' });
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    const payload = payloadResult.data;
-
     setSubmitting(true);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('onboard-lawyer', {
+      const payload = payloadResult.data;
+      const { data, error: fnError } = await supabase.functions.invoke('onboard-broker', {
         method: 'POST',
         body: {
           account: {
             email: payload.account.email,
             password: payload.account.password,
           },
-          attorneyProfile: payload.attorneyProfile,
-          teamMembers: payload.teamMembers,
+          brokerProfile: payload.brokerProfile,
+          brokerMembers: payload.brokerMembers.map((member) => ({
+            ...member,
+            confirmPassword: undefined,
+          })),
         },
       });
 
       if (fnError) {
-        const msg = fnError.message || 'Failed to create lawyer account';
-        setSubmitResult({ type: 'error', message: msg });
+        setSubmitResult({ type: 'error', message: fnError.message || 'Failed to create broker account' });
         if (data?.fieldErrors) setFieldErrors(data.fieldErrors);
         return;
       }
@@ -394,17 +359,18 @@ export default function OnboardingPortalPage() {
         ? data.warnings.filter((warning): warning is string => typeof warning === 'string' && warning.trim().length > 0)
         : [];
       const createdEmail = payload.account.email;
-      const displayName = (payload.attorneyProfile?.fullName || '').trim();
+      const displayName = (payload.brokerProfile?.fullName || '').trim();
 
       setSubmitWarnings(warnings);
       setSubmitResult({
         type: 'success',
         message: warnings.length > 0
-          ? `Lawyer account created successfully for ${createdEmail}. Review the notes below.`
-          : `Lawyer account created successfully for ${createdEmail}`,
+          ? `Broker account created successfully for ${createdEmail}. Review the notes below.`
+          : `Broker account created successfully for ${createdEmail}`,
       });
+
       toast({
-        title: warnings.length > 0 ? 'Account Created With Notes' : 'Account Created',
+        title: warnings.length > 0 ? 'Broker Created With Notes' : 'Broker Created',
         description: warnings.length > 0
           ? warnings[0]
           : displayName
@@ -412,13 +378,12 @@ export default function OnboardingPortalPage() {
             : `${createdEmail} has been onboarded.`,
       });
 
-      // Keep the user on the page when there are follow-up notes to review.
       if (data?.userId && warnings.length === 0) {
         setTimeout(() => {
-          navigate('/lawyer-management', {
+          navigate('/broker-management', {
             state: { selectedUserId: data.userId },
           });
-        }, 1500);
+        }, 1200);
       }
     } catch (err) {
       setSubmitResult({ type: 'error', message: (err as Error).message || 'Unexpected error' });
@@ -426,70 +391,88 @@ export default function OnboardingPortalPage() {
       setSubmitting(false);
     }
   }, [
-    email, password, confirmPassword, fullName, firmName, bio, yearsExperience,
-    languages, barLicenses, primaryEmail, personalEmail, directPhone,
-    preferredContact, street, suite, city, addressState, zip, websiteUrl,
-    assistantName, assistantEmail, licensedStates, primaryLocation, countiesCovered,
-    federalCourts, primaryPracticeFocus, injuryCategories, exclusionaryCriteria,
-    teamMembers, toast, navigate,
+    email,
+    password,
+    confirmPassword,
+    fullName,
+    companyName,
+    bio,
+    yearsInBusiness,
+    languages,
+    primaryEmail,
+    personalEmail,
+    directPhone,
+    preferredContact,
+    street,
+    suite,
+    city,
+    addressState,
+    zip,
+    websiteUrl,
+    linkedinUsername,
+    instagramUsername,
+    facebookUsername,
+    activeModels,
+    activeStates,
+    primaryCampaign,
+    numberOfAttorneys,
+    averageVolume,
+    pricePerState,
+    caseCategory,
+    solCriteria,
+    brokerMembers,
+    toast,
+    navigate,
   ]);
-
-  const e = (key: string) => fieldErrors[key];
 
   return (
     <div className="dashboard-premium min-h-full px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[900px] space-y-5">
-
-        {/* ── Page header ── */}
         <div className="dash-animate-in">
-          <h1 className="text-lg font-bold text-[var(--dash-text)]">New Lawyer Onboarding</h1>
-          <p className="text-[12px] text-[var(--dash-text-muted)] mt-0.5">
-            This form can be used simply for account creation as well. Only Account Credentials are required, and every other field is optional.
+          <h1 className="text-lg font-bold text-[var(--dash-text)]">New Broker Onboarding</h1>
+          <p className="mt-0.5 text-[12px] text-[var(--dash-text-muted)]">
+            Only Account Credentials are required for the broker. Profile details and broker members can be added now or later.
           </p>
         </div>
 
-        {/* ── Result banner ── */}
-        {submitResult && (
-          <StatusBanner type={submitResult.type} message={submitResult.message} />
-        )}
-        {submitWarnings.length > 0 && (
+        {submitResult ? <StatusBanner type={submitResult.type} message={submitResult.message} /> : null}
+        {submitWarnings.length > 0 ? (
           <div className="space-y-2">
             {submitWarnings.map((warning, index) => (
               <StatusBanner key={`submit-warning-${index}`} type="warning" message={warning} />
             ))}
           </div>
-        )}
+        ) : null}
 
-        {/* ═══ Section 1: Account Credentials ═══ */}
         <SectionCard icon={<User className="h-3.5 w-3.5" />} title="Account Credentials" delay={60}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FormInput
-              label="Email Address"
+              label="Broker Email Address"
               required
               type="email"
-              placeholder="lawyer@firm.com"
+              placeholder="broker@company.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               error={e('account.email')}
             />
-            <div /> {/* spacer */}
+            <div />
             <div>
               <FieldLabel required>Password</FieldLabel>
               <div className="relative">
                 <Input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Min 8 characters"
-                  className="h-9 pr-9 border-[var(--dash-border)] bg-background/80 text-[13px] text-[var(--dash-text)] backdrop-blur-sm placeholder:text-[var(--dash-text-muted)]/50 focus:ring-[#AE4010]/30"
+                  placeholder="Minimum 8 characters"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="h-9 border-[var(--dash-border)] bg-transparent pr-10 text-[13px] text-[var(--dash-text)]"
                 />
                 <button
                   type="button"
+                  onClick={() => setShowPassword((value) => !value)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--dash-text-muted)] hover:text-[var(--dash-text)]"
-                  onClick={() => setShowPassword(!showPassword)}
-                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               <FieldError message={e('account.password')} />
@@ -500,36 +483,199 @@ export default function OnboardingPortalPage() {
               type={showPassword ? 'text' : 'password'}
               placeholder="Repeat password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(event) => setConfirmPassword(event.target.value)}
               error={e('account.confirmPassword')}
             />
           </div>
+
+          <div className="mt-5 border-t border-[var(--dash-border)] pt-4">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <FieldLabel>Broker Members</FieldLabel>
+                <FieldHelper>Optional credentialed broker_member accounts attached to this broker.</FieldHelper>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addBrokerMember}
+                className="border-[#AE4010]/30 text-[#AE4010] hover:bg-[#AE4010]/10"
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Add Member
+              </Button>
+            </div>
+
+            {brokerMembers.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[var(--dash-border)] px-4 py-6 text-center text-[12px] text-[var(--dash-text-muted)]">
+                No broker members added yet.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {brokerMembers.map((member, index) => (
+                  <div key={index} className="rounded-lg border border-[var(--dash-border)] bg-white/[0.02] p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--dash-text-muted)]">
+                        Broker Member {index + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeBrokerMember(index)}
+                        className="text-[var(--dash-text-muted)] transition-colors hover:text-red-400"
+                        aria-label={`Remove broker member ${index + 1}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <FormInput
+                        label="Full Name"
+                        required
+                        placeholder="Jane Smith"
+                        value={member.full_name}
+                        onChange={(event) => updateBrokerMember(index, 'full_name', event.target.value)}
+                        error={e(`brokerMembers.${index}.full_name`)}
+                      />
+                      <FormInput
+                        label="Email"
+                        required
+                        type="email"
+                        placeholder="jane@company.com"
+                        value={member.email}
+                        onChange={(event) => updateBrokerMember(index, 'email', event.target.value)}
+                        error={e(`brokerMembers.${index}.email`)}
+                      />
+                      <FormInput
+                        label="Password"
+                        required
+                        type="password"
+                        placeholder="Minimum 8 characters"
+                        value={member.password}
+                        onChange={(event) => updateBrokerMember(index, 'password', event.target.value)}
+                        error={e(`brokerMembers.${index}.password`)}
+                      />
+                      <FormInput
+                        label="Confirm Password"
+                        required
+                        type="password"
+                        placeholder="Repeat password"
+                        value={member.confirmPassword}
+                        onChange={(event) => updateBrokerMember(index, 'confirmPassword', event.target.value)}
+                        error={e(`brokerMembers.${index}.confirmPassword`)}
+                      />
+                      <FormInput
+                        label="Phone"
+                        type="tel"
+                        placeholder="(555) 000-0000"
+                        value={member.phone || ''}
+                        onChange={(event) => updateBrokerMember(index, 'phone', event.target.value)}
+                      />
+                      <div>
+                        <FieldLabel>State</FieldLabel>
+                        <Select value={member.state || ''} onValueChange={(value) => updateBrokerMember(index, 'state', value)}>
+                          <SelectTrigger className={DASH_SELECT_TRIGGER_CLASS}>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent className={DASH_SELECT_CONTENT_CLASS}>
+                            {US_STATES.map((state) => (
+                              <SelectItem key={state.code} value={state.code}>{state.code} - {state.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <FieldLabel required>Position</FieldLabel>
+                        <Select value={member.position} onValueChange={(value) => updateBrokerMember(index, 'position', value)}>
+                          <SelectTrigger className={DASH_SELECT_TRIGGER_CLASS}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className={DASH_SELECT_CONTENT_CLASS}>
+                            {POSITION_OPTIONS.map((position) => (
+                              <SelectItem key={position.value} value={position.value}>{position.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FieldError message={e(`brokerMembers.${index}.position`)} />
+                      </div>
+                      {member.position === 'other' ? (
+                        <FormInput
+                          label="Specify Position"
+                          required
+                          placeholder="Operations"
+                          value={member.position_other || ''}
+                          onChange={(event) => updateBrokerMember(index, 'position_other', event.target.value)}
+                          error={e(`brokerMembers.${index}.position_other`)}
+                        />
+                      ) : null}
+                    </div>
+
+                    <div className="mt-4 border-t border-[var(--dash-border)] pt-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <FieldLabel required>Allowed Sections</FieldLabel>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            className="text-[11px] font-medium text-[#AE4010] hover:text-[#E8622A]"
+                            onClick={() => setBrokerMemberSections(index, [...ALL_BROKER_SECTIONS])}
+                          >
+                            Select all
+                          </button>
+                          <button
+                            type="button"
+                            className="text-[11px] font-medium text-[var(--dash-text-muted)] hover:text-[var(--dash-text)]"
+                            onClick={() => setBrokerMemberSections(index, [])}
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {BROKER_SECTION_OPTIONS.map((section) => (
+                          <label
+                            key={section.value}
+                            className="flex items-center gap-2 rounded-md border border-[var(--dash-border)] bg-background/40 px-3 py-2 text-[12px] text-[var(--dash-text)]"
+                          >
+                            <Checkbox
+                              checked={(member.allowed_sections ?? []).includes(section.value)}
+                              onCheckedChange={() => toggleBrokerMemberSection(index, section.value)}
+                            />
+                            <span>{section.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <FieldError message={e(`brokerMembers.${index}.allowed_sections`)} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </SectionCard>
 
-        {/* ═══ Section 2: Account & Identity ═══ */}
-        <SectionCard icon={<Briefcase className="h-3.5 w-3.5" />} title="Account & Identity" delay={120}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <SectionCard icon={<Building2 className="h-3.5 w-3.5" />} title="Account & Identity" delay={120}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FormInput
               label="Full Name"
               placeholder="John Doe"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              error={e('profile.fullName')}
+              onChange={(event) => setFullName(event.target.value)}
+              error={e('brokerProfile.fullName')}
             />
             <FormInput
-              label="Firm Name"
-              placeholder="Doe & Associates"
-              value={firmName}
-              onChange={(e) => setFirmName(e.target.value)}
-              error={e('profile.firmName')}
+              label="Company Name"
+              placeholder="Brokerage LLC"
+              value={companyName}
+              onChange={(event) => setCompanyName(event.target.value)}
+              error={e('brokerProfile.companyName')}
             />
             <FormInput
-              label="Years of Experience"
+              label="Years in Business"
               type="number"
-              placeholder="10"
-              value={yearsExperience}
-              onChange={(e) => setYearsExperience(e.target.value)}
               min={0}
+              placeholder="5"
+              value={yearsInBusiness}
+              onChange={(event) => setYearsInBusiness(event.target.value)}
             />
             <div>
               <FieldLabel>Languages</FieldLabel>
@@ -541,95 +687,38 @@ export default function OnboardingPortalPage() {
                 className={DASH_MULTISELECT_COMPACT_CLASS}
                 showSelectAll={false}
               />
-              <FieldError message={e('profile.languages')} />
             </div>
           </div>
           <div className="mt-3">
             <FieldLabel>Bio</FieldLabel>
             <Textarea
-              placeholder="Brief attorney bio..."
+              placeholder="Brief broker bio..."
               className="min-h-[72px] border-[var(--dash-border)] bg-transparent text-[13px] text-[var(--dash-text)] placeholder:text-[var(--dash-text-muted)]/50 focus:ring-[#AE4010]/30"
               value={bio}
-              onChange={(e) => setBio(e.target.value)}
+              onChange={(event) => setBio(event.target.value)}
             />
           </div>
 
-          <div className="mt-4 pt-4 border-t border-[var(--dash-border)]">
-            <div className="flex items-center justify-between mb-2">
-              <FieldLabel>Bar Licenses</FieldLabel>
-              <button
-                type="button"
-                onClick={addBarLicense}
-                className="flex items-center gap-1 text-[11px] text-[#AE4010] hover:text-[#E8622A] font-medium transition-colors"
-              >
-                <Plus className="h-3 w-3" /> Add License
-              </button>
-            </div>
-            <FieldError message={e('profile.barLicenses')} />
-            <div className="space-y-2">
-              {barLicenses.map((lic, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <Select value={lic.state} onValueChange={(v) => updateBarLicense(idx, 'state', v)}>
-                    <SelectTrigger className={`w-24 ${DASH_SELECT_TRIGGER_CLASS}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className={DASH_SELECT_CONTENT_CLASS}>
-                      {US_STATES.map((s) => (
-                        <SelectItem key={s.code} value={s.code}>{s.code}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    className="h-9 flex-1 border-[var(--dash-border)] bg-transparent text-[13px] text-[var(--dash-text)] placeholder:text-[var(--dash-text-muted)]/50"
-                    placeholder="License number"
-                    value={lic.number}
-                    onChange={(e) => updateBarLicense(idx, 'number', e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeBarLicense(idx)}
-                    aria-label={`Remove bar license ${idx + 1}`}
-                    className="text-[var(--dash-text-muted)] hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div className="mt-4 border-t border-[var(--dash-border)] pt-4">
+            <FieldLabel>Active Models</FieldLabel>
+            <MultiSelect
+              options={BROKER_MODEL_OPTIONS}
+              selected={activeModels}
+              onChange={setActiveModels}
+              placeholder="Select models"
+              className={DASH_MULTISELECT_CLASS}
+              showSelectAll={false}
+            />
           </div>
         </SectionCard>
 
-        {/* ═══ Section 2: Contact & Address ═══ */}
         <SectionCard icon={<MapPin className="h-3.5 w-3.5" />} title="Contact Details" delay={180}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormInput
-              label="Primary Email"
-              type="email"
-              placeholder="lawyer@firm.com"
-              value={primaryEmail}
-              onChange={(e) => {
-                setPrimaryEmailTouched(true);
-                setPrimaryEmail(e.target.value);
-              }}
-              error={e('profile.primaryEmail')}
-            />
-            <FormInput
-              label="Personal Email"
-              type="email"
-              placeholder="john@personal.com"
-              value={personalEmail}
-              onChange={(e) => setPersonalEmail(e.target.value)}
-            />
-            <FormInput
-              label="Direct Phone"
-              type="tel"
-              placeholder="(555) 123-4567"
-              value={directPhone}
-              onChange={(e) => setDirectPhone(e.target.value)}
-              error={e('profile.directPhone')}
-            />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormInput label="Primary Email" type="email" placeholder="contact@company.com" value={primaryEmail} onChange={(event) => setPrimaryEmail(event.target.value)} />
+            <FormInput label="Personal Email" type="email" placeholder="name@example.com" value={personalEmail} onChange={(event) => setPersonalEmail(event.target.value)} />
+            <FormInput label="Direct Phone" type="tel" placeholder="(555) 000-0000" value={directPhone} onChange={(event) => setDirectPhone(event.target.value)} />
             <div>
-              <FieldLabel>Preferred Contact Method</FieldLabel>
+              <FieldLabel>Preferred Contact</FieldLabel>
               <ToggleGroup
                 value={preferredContact}
                 onChange={setPreferredContact}
@@ -642,31 +731,14 @@ export default function OnboardingPortalPage() {
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-[var(--dash-border)]">
-            <p className="text-[11px] font-medium text-[var(--dash-text-muted)] uppercase tracking-wider mb-2">Office Address</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormInput
-                label="Street Address"
-                placeholder="123 Main St"
-                value={street}
-                onChange={(e) => setStreet(e.target.value)}
-                error={e('profile.officeAddress.street')}
-              />
-              <FormInput
-                label="Suite / Unit"
-                placeholder="Suite 200"
-                value={suite}
-                onChange={(e) => setSuite(e.target.value)}
-              />
+          <div className="mt-4 border-t border-[var(--dash-border)] pt-4">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--dash-text-muted)]">Office Address</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormInput label="Street Address" placeholder="123 Main St" value={street} onChange={(event) => setStreet(event.target.value)} />
+              <FormInput label="Suite / Unit" placeholder="Suite 200" value={suite} onChange={(event) => setSuite(event.target.value)} />
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-              <FormInput
-                label="City"
-                placeholder="Miami"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                error={e('profile.officeAddress.city')}
-              />
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <FormInput label="City" placeholder="Miami" value={city} onChange={(event) => setCity(event.target.value)} />
               <div>
                 <FieldLabel>State</FieldLabel>
                 <Select value={addressState} onValueChange={setAddressState}>
@@ -674,332 +746,129 @@ export default function OnboardingPortalPage() {
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent className={DASH_SELECT_CONTENT_CLASS}>
-                    {US_STATES.map((s) => (
-                      <SelectItem key={s.code} value={s.code}>{s.code} - {s.name}</SelectItem>
+                    {US_STATES.map((state) => (
+                      <SelectItem key={state.code} value={state.code}>{state.code} - {state.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldError message={e('profile.officeAddress.state')} />
               </div>
-              <FormInput
-                label="ZIP Code"
-                placeholder="33101"
-                value={zip}
-                onChange={(e) => setZip(e.target.value)}
-                error={e('profile.officeAddress.zip')}
-              />
+              <FormInput label="ZIP Code" placeholder="33101" value={zip} onChange={(event) => setZip(event.target.value)} />
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-[var(--dash-border)]">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormInput
-                label="Website URL"
-                type="url"
-                placeholder="https://www.firm.com"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-              />
-              <div /> {/* spacer */}
-              <FormInput
-                label="Assistant Name"
-                placeholder="Jane Smith"
-                value={assistantName}
-                onChange={(e) => setAssistantName(e.target.value)}
-              />
-              <FormInput
-                label="Assistant Email"
-                type="email"
-                placeholder="assistant@firm.com"
-                value={assistantEmail}
-                onChange={(e) => setAssistantEmail(e.target.value)}
-              />
+          <div className="mt-4 border-t border-[var(--dash-border)] pt-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormInput label="Website URL" type="url" placeholder="https://www.company.com" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} />
+              <FormInput label="LinkedIn Username" placeholder="company-name" value={linkedinUsername} onChange={(event) => setLinkedinUsername(event.target.value)} />
+              <FormInput label="Instagram Username" placeholder="companyname" value={instagramUsername} onChange={(event) => setInstagramUsername(event.target.value)} />
+              <FormInput label="Facebook Username" placeholder="companyname" value={facebookUsername} onChange={(event) => setFacebookUsername(event.target.value)} />
             </div>
           </div>
         </SectionCard>
 
-        {/* ═══ Section 3: Expertise & Jurisdiction ═══ */}
-        <SectionCard icon={<Scale className="h-3.5 w-3.5" />} title="Expertise & Jurisdiction" delay={240}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <SectionCard icon={<Users className="h-3.5 w-3.5" />} title="Expertise & Jurisdiction" delay={240}>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
-              <FieldLabel>Licensed States</FieldLabel>
-              <div className="min-h-[20px]">
-                <FieldHelper>Maximum 5 states</FieldHelper>
-              </div>
+              <FieldLabel>Active States</FieldLabel>
+              <FieldHelper>Maximum 50 states</FieldHelper>
               <MultiSelect
                 options={STATE_CODE_OPTIONS}
-                selected={licensedStates}
-                onChange={(v) => setLicensedStates(v.slice(0, 5))}
+                selected={activeStates}
+                onChange={(value) => setActiveStates(value.slice(0, 50))}
                 placeholder="Select states"
                 className={DASH_MULTISELECT_COMPACT_CLASS}
-                showSelectAll={false}
+                showSelectAll
               />
-              <FieldError message={e('profile.licensedStates')} />
             </div>
             <div>
-              <FieldLabel>Primary Location</FieldLabel>
-              <div className="min-h-[20px]">
-                <FieldHelper>Select one state</FieldHelper>
-              </div>
-              <Select value={primaryLocation} onValueChange={setPrimaryLocation}>
+              <FieldLabel>Primary Campaign</FieldLabel>
+              <FieldHelper>Select one active model</FieldHelper>
+              <Select value={primaryCampaign} onValueChange={setPrimaryCampaign}>
                 <SelectTrigger className={DASH_SELECT_TRIGGER_CLASS}>
-                  <SelectValue placeholder="Select state" />
+                  <SelectValue placeholder="Select campaign" />
                 </SelectTrigger>
                 <SelectContent className={DASH_SELECT_CONTENT_CLASS}>
-                  {US_STATES.map((s) => (
-                    <SelectItem key={s.code} value={s.code}>{s.code} - {s.name}</SelectItem>
+                  {BROKER_MODEL_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <FieldError message={e('profile.primaryCity')} />
             </div>
-          </div>
-
-          <div className="mt-3">
-            <FieldLabel>Counties Covered</FieldLabel>
-            <FieldHelper>Type a county name and press Enter to add</FieldHelper>
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {countiesCovered.map((county) => (
-                <span
-                  key={county}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#AE4010]/10 text-[11px] text-[#AE4010] font-medium"
-                >
-                  {county}
-                  <button type="button" onClick={() => removeCounty(county)} className="hover:text-red-400">
-                    <Trash2 className="h-2.5 w-2.5" />
-                  </button>
-                </span>
-              ))}
-            </div>
-            <Input
-              className="h-9 mt-1.5 border-[var(--dash-border)] bg-transparent text-[13px] text-[var(--dash-text)] placeholder:text-[var(--dash-text-muted)]/50"
-              placeholder="e.g. Miami-Dade County"
-              value={countiesInput}
-              onChange={(e) => setCountiesInput(e.target.value)}
-              onKeyDown={handleCountiesKeyDown}
-            />
-          </div>
-
-          <div className="mt-3">
             <FormInput
-              label="Federal Courts"
-              placeholder="e.g. Southern District of Florida"
-              value={federalCourts}
-              onChange={(e) => setFederalCourts(e.target.value)}
+              label="Number of Attorneys"
+              type="number"
+              min={0}
+              placeholder="25"
+              value={numberOfAttorneys}
+              onChange={(event) => setNumberOfAttorneys(event.target.value)}
             />
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-[var(--dash-border)]">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <FieldLabel>Primary Practice Focus</FieldLabel>
-                <Select value={primaryPracticeFocus} onValueChange={setPrimaryPracticeFocus}>
-                  <SelectTrigger className={DASH_SELECT_TRIGGER_CLASS}>
-                    <SelectValue placeholder="Select focus area" />
-                  </SelectTrigger>
-                  <SelectContent className={DASH_SELECT_CONTENT_CLASS}>
-                    {PRACTICE_FOCUS_OPTIONS.map((opt) => (
-                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldError message={e('profile.primaryPracticeFocus')} />
-              </div>
-              <div>
-                <FieldLabel>Injury Categories</FieldLabel>
-                <MultiSelect
-                  options={INJURY_CATEGORY_OPTIONS}
-                  selected={injuryCategories}
-                  onChange={setInjuryCategories}
-                  placeholder="Select categories"
-                  className={DASH_MULTISELECT_COMPACT_CLASS}
-                />
-                <FieldError message={e('profile.injuryCategories')} />
-              </div>
+            <FormInput
+              label="Average Volume"
+              type="number"
+              min={0}
+              placeholder="100"
+              value={averageVolume}
+              onChange={(event) => setAverageVolume(event.target.value)}
+            />
+            <FormInput
+              label="Price per State"
+              type="number"
+              min={MIN_PRICE_PER_STATE}
+              step={1}
+              placeholder={String(MIN_PRICE_PER_STATE)}
+              value={pricePerState}
+              onChange={(event) => setPricePerState(event.target.value)}
+              helper={`Minimum $${MIN_PRICE_PER_STATE.toLocaleString()}`}
+              error={e('brokerProfile.pricePerState')}
+            />
+            <div>
+              <FieldLabel>Case Category</FieldLabel>
+              <Select value={caseCategory} onValueChange={setCaseCategory}>
+                <SelectTrigger className={DASH_SELECT_TRIGGER_CLASS}>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent className={DASH_SELECT_CONTENT_CLASS}>
+                  {CASE_CATEGORY_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="mt-3">
-              <FieldLabel>Exclusionary Criteria</FieldLabel>
-              <FieldHelper>Cases the attorney will not accept</FieldHelper>
-              <MultiSelect
-                options={EXCLUSIONARY_CRITERIA_OPTIONS}
-                selected={exclusionaryCriteria}
-                onChange={setExclusionaryCriteria}
-                placeholder="Select criteria"
-                className={DASH_MULTISELECT_CLASS}
-              />
+            <div>
+              <FieldLabel>SOL Criteria</FieldLabel>
+              <Select value={solCriteria} onValueChange={setSolCriteria}>
+                <SelectTrigger className={DASH_SELECT_TRIGGER_CLASS}>
+                  <SelectValue placeholder="Select criteria" />
+                </SelectTrigger>
+                <SelectContent className={DASH_SELECT_CONTENT_CLASS}>
+                  {SOL_CRITERIA_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </SectionCard>
 
-        {/* ═══ Section 4: Team Members ═══ */}
-        <SectionCard icon={<Users className="h-3.5 w-3.5" />} title="Team Members" delay={300}>
-          {teamMembers.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[var(--dash-border)] px-4 py-8 text-center">
-              <p className="text-[12px] text-[var(--dash-text-muted)]">
-                No team members added yet. Add contacts from the firm's team.
-              </p>
-              <button
-                type="button"
-                onClick={addTeamMember}
-                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#AE4010]/10 text-[12px] font-medium text-[#AE4010] hover:bg-[#AE4010]/20 transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" /> Add Team Member
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {teamMembers.map((member, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-lg border border-[var(--dash-border)] bg-white/[0.02] p-4"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[11px] font-semibold text-[var(--dash-text-muted)] uppercase tracking-wider">
-                      Team Member {idx + 1}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeTeamMember(idx)}
-                      className="text-[var(--dash-text-muted)] hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <FormInput
-                      label="Full Name"
-                      placeholder="Jane Smith"
-                      value={member.full_name}
-                      onChange={(e) => updateTeamMember(idx, 'full_name', e.target.value)}
-                      error={e(`team.${idx}.full_name`)}
-                    />
-                    <FormInput
-                      label="Email"
-                      type="email"
-                      placeholder="jane@firm.com"
-                      value={member.email}
-                      onChange={(e) => updateTeamMember(idx, 'email', e.target.value)}
-                      error={e(`team.${idx}.email`)}
-                    />
-                  </div>
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <FormInput
-                      label="Phone"
-                      type="tel"
-                      placeholder="(555) 000-0000"
-                      value={member.phone || ''}
-                      onChange={(e) => updateTeamMember(idx, 'phone', e.target.value)}
-                    />
-                    <div>
-                      <FieldLabel>State</FieldLabel>
-                      <Select
-                        value={member.state || ''}
-                        onValueChange={(v) => updateTeamMember(idx, 'state', v)}
-                      >
-                        <SelectTrigger className={DASH_SELECT_TRIGGER_CLASS}>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent className={DASH_SELECT_CONTENT_CLASS}>
-                          {US_STATES.map((s) => (
-                            <SelectItem key={s.code} value={s.code}>{s.code} - {s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <FieldLabel>Position</FieldLabel>
-                      <Select
-                        value={member.position}
-                        onValueChange={(v) => updateTeamMember(idx, 'position', v)}
-                      >
-                        <SelectTrigger className={DASH_SELECT_TRIGGER_CLASS}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className={DASH_SELECT_CONTENT_CLASS}>
-                          {POSITION_OPTIONS.map((p) => (
-                            <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {member.position === 'other' && (
-                      <FormInput
-                        label="Specify Position"
-                        placeholder="e.g. Paralegal"
-                        value={member.position_other || ''}
-                        onChange={(e) => updateTeamMember(idx, 'position_other', e.target.value)}
-                        error={e(`team.${idx}.position_other`)}
-                      />
-                    )}
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addTeamMember}
-                className="flex items-center gap-1.5 text-[12px] font-medium text-[#AE4010] hover:text-[#E8622A] transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" /> Add Another Member
-              </button>
-            </div>
-          )}
-        </SectionCard>
-
-        {/* ═══ Disclaimer / Warning card ═══ */}
         <div className="dash-animate-in" style={{ animationDelay: '300ms' }}>
           <div className="overflow-hidden rounded-2xl border border-amber-500/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.08)_0%,rgba(245,158,11,0.04)_100%)] shadow-[0_10px_24px_rgba(120,53,15,0.08)] backdrop-blur-sm">
-            <button
-              type="button"
-              onClick={() => setDisclaimerOpen(!disclaimerOpen)}
-              aria-expanded={disclaimerOpen}
-              aria-controls={disclaimerPanelId}
-              className="flex w-full items-center justify-between px-5 py-3.5 text-left transition-colors hover:bg-amber-500/[0.04]"
-            >
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
-                  <AlertTriangle className="h-4 w-4 text-amber-400" />
-                </div>
-                <div>
-                  <span className="block text-[12px] font-semibold text-amber-200">Important Notes</span>
-                  <span className="mt-0.5 block text-[11px] text-amber-200/70">
-                    A few account creation details to keep in mind before submitting.
-                  </span>
-                </div>
+            <div className="flex items-start gap-3 px-5 py-4">
+              <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
+                <AlertTriangle className="h-4 w-4 text-amber-400" />
               </div>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-500/20 bg-amber-500/8">
-                {disclaimerOpen ? (
-                  <ChevronUp className="h-4 w-4 text-amber-400" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-amber-400" />
-                )}
+              <div className="space-y-2">
+                <span className="block text-[12px] font-semibold text-amber-200">Important Notes</span>
+                <p className="text-[12px] leading-5 text-amber-100/85">
+                  This creates a real user account with <Badge variant="outline" className="mx-1 border-amber-500/30 text-amber-200">broker</Badge> role access.
+                </p>
+                <p className="text-[12px] leading-5 text-amber-100/80">
+                  Broker members are created as credentialed <Badge variant="outline" className="mx-1 border-amber-500/30 text-amber-200">broker_member</Badge> users and attached to this broker workspace.
+                </p>
               </div>
-            </button>
-            {disclaimerOpen && (
-              <div
-                id={disclaimerPanelId}
-                className="border-t border-amber-500/15 px-5 py-4"
-              >
-                <div className="space-y-3">
-                  <p className="text-[12px] leading-5 text-amber-100/85">
-                    This creates a real user account in the system with{' '}
-                    <span className="inline-flex items-center rounded-md border border-amber-500/20 bg-amber-500/12 px-1.5 py-0.5 text-[11px] font-medium text-amber-200">
-                      lawyer
-                    </span>{' '}
-                    role access.
-                  </p>
-                  <p className="text-[12px] leading-5 text-amber-100/80">
-                    The attorney can log in immediately with the credentials provided, and any profile details entered here will be pre-populated for them.
-                  </p>
-                  <p className="text-[12px] leading-5 text-amber-100/80">
-                    Team members entered here will be associated with the attorney account and can be updated later from Lawyer Management section.
-                  </p>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
-        {/* ═══ Submit ═══ */}
         <div className="dash-animate-in flex justify-end gap-3 pb-8" style={{ animationDelay: '360ms' }}>
           <Button
             variant="outline"
@@ -1016,11 +885,11 @@ export default function OnboardingPortalPage() {
           >
             {submitting ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creating Account...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating Broker...
               </>
             ) : (
-              'Create Lawyer Account'
+              'Create Broker Account'
             )}
           </Button>
         </div>

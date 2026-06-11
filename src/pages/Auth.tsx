@@ -85,7 +85,7 @@ const Auth = () => {
       {/* --- Main Container --- */}
       <div className="relative z-10 w-full max-w-6xl px-4 pt-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
         <div className="w-full flex justify-between items-center">
-          <img src="/assets/logo.png" alt="Lawyer Onboarding Portal" className="h-16 w-auto drop-shadow-md" />
+          <img src="/assets/logo.png" alt="Broker Onboarding Portal" className="h-16 w-auto drop-shadow-md" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 lg:gap-8 items-center">
@@ -94,10 +94,10 @@ const Auth = () => {
           <div className="relative z-10 hidden lg:flex flex-col justify-center h-full space-y-8 pr-10">
             <div className="space-y-4">
               <h1 className="text-5xl font-bold tracking-tight leading-[1.1]" style={{ color: '#000000' }}>
-                Lawyer Acquisition Portal <br />
+                Broker Onboarding Portal <br />
               </h1>
               <p className="text-lg text-slate-600 max-w-md leading-relaxed">
-                Your command center for lawyer acquisition operations. Access real-time analytics, manage workflows, and track progress in one secure workspace.
+                Your command center for broker onboarding operations. Access real-time analytics, manage workflows, and track progress in one secure workspace.
               </p>
             </div>
 

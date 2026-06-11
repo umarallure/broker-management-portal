@@ -488,7 +488,7 @@ const Retainers = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lawyer-search">Search Lawyer</Label>
+                <Label htmlFor="lawyer-search">Search Broker</Label>
                 <div className="relative" ref={lawyerDropdownRef}>
                   <Input
                     id="lawyer-search"
@@ -682,7 +682,7 @@ const Retainers = () => {
                   className="flex items-center space-x-2"
                 >
                   <Phone className="h-4 w-4" />
-                  <span>New Lawyer</span>
+                  <span>New Broker</span>
                 </Button>
               </div>
             </div>
@@ -691,10 +691,10 @@ const Retainers = () => {
 
         {/* Main Content */}
         <div className="space-y-6">
-          {/* Lawyers List */}
+          {/* Broker leads list */}
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Total Lawyers ({filteredLeads.length})</h2>
+              <h2 className="text-2xl font-bold">Total Brokers ({filteredLeads.length})</h2>
               {totalPages > 1 && (
                 <div className="text-sm text-muted-foreground">
                   Page {currentPage} of {totalPages}
@@ -746,7 +746,7 @@ const Retainers = () => {
                                 ) : (
                                   <>
                                     <ChevronDown className="h-4 w-4" />
-                                    <span className="hidden sm:inline text-sm text-muted-foreground">Lawyer Details</span>
+                                    <span className="hidden sm:inline text-sm text-muted-foreground">Broker Details</span>
                                   </>
                                 )}
                               </Button>

@@ -17,7 +17,7 @@ type CenterCreateLeadModalProps = {
   leadVendor: string;
 };
 
-type LawyerFormData = {
+type BrokerLeadFormData = {
   customer_full_name: string;
   phone_number: string;
   street_address: string;
@@ -63,7 +63,7 @@ const US_STATES = [
 export const CenterCreateLeadModal = ({ open, onClose, onLeadCreated, leadVendor }: CenterCreateLeadModalProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<LawyerFormData>({
+  const [formData, setFormData] = useState<BrokerLeadFormData>({
     customer_full_name: '',
     phone_number: '',
     street_address: '',
@@ -103,7 +103,7 @@ export const CenterCreateLeadModal = ({ open, onClose, onLeadCreated, leadVendor
     return `CBB${randomNumber}`;
   };
 
-  const handleInputChange = (field: keyof LawyerFormData, value: string) => {
+  const handleInputChange = (field: keyof BrokerLeadFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -132,8 +132,8 @@ export const CenterCreateLeadModal = ({ open, onClose, onLeadCreated, leadVendor
     try {
       const submissionId = generateSubmissionId();
       
-      // Prepare the lawyer data
-      const lawyerData = {
+      // Prepare the broker lead data
+      const BrokerLeadData = {
         submission_id: submissionId,
         submission_date: new Date().toISOString(),
         customer_full_name: formData.customer_full_name.trim(),
@@ -177,22 +177,23 @@ export const CenterCreateLeadModal = ({ open, onClose, onLeadCreated, leadVendor
 
       const { error } = await supabase
         .from('leads')
-        .insert([lawyerData]);
+        .insert([BrokerLeadData]);
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: `Lawyer created successfully! Submission ID: ${submissionId}`,
+        description: `Broker lead created successfully! Submission ID: ${submissionId}`,
       });
 
       onLeadCreated();
       handleClose();
-    } catch (error: any) {
-      console.error('Error creating lawyer:', error);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : null;
+      console.error('Error creating broker lead:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create lawyer. Please try again.",
+        description: message || "Failed to create broker lead. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -243,9 +244,9 @@ export const CenterCreateLeadModal = ({ open, onClose, onLeadCreated, leadVendor
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw] sm:w-full">
         <DialogHeader>
-          <DialogTitle>Create New Lawyer</DialogTitle>
+          <DialogTitle>Create New Broker Lead</DialogTitle>
           <DialogDescription>
-            Fill in the lawyer information. Fields marked with * are required.
+            Fill in the broker lead information. Fields marked with * are required.
             <br />
             <span className="text-sm text-muted-foreground">Lead Vendor: <span className="font-semibold">{leadVendor}</span></span>
           </DialogDescription>
@@ -625,7 +626,7 @@ export const CenterCreateLeadModal = ({ open, onClose, onLeadCreated, leadVendor
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Creating...' : 'Create Lawyer'}
+            {loading ? 'Creating...' : 'Create Broker Lead'}
           </Button>
         </DialogFooter>
       </DialogContent>

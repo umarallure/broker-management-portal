@@ -37,8 +37,8 @@ type DashboardStats = {
   scheduledMeetings: number;
   ranMeeting: number;
   signedAgreements: number;
-  activeLawyers: number;
-  inactiveLawyers: number;
+  activeBrokers: number;
+  inactiveBrokers: number;
 };
 
 const EMPTY_STATS: DashboardStats = {
@@ -48,8 +48,8 @@ const EMPTY_STATS: DashboardStats = {
   scheduledMeetings: 0,
   ranMeeting: 0,
   signedAgreements: 0,
-  activeLawyers: 0,
-  inactiveLawyers: 0,
+  activeBrokers: 0,
+  inactiveBrokers: 0,
 };
 
 type StatCardKey = keyof DashboardStats;
@@ -61,8 +61,8 @@ const ALL_STAT_CARDS: { key: StatCardKey; label: string; subtitle?: string }[] =
   { key: 'ranMeeting', label: 'Ran Meeting' },
   { key: 'signedAgreements', label: 'Signed Agreements' },
   { key: 'opportunities', label: 'Onboardings' },
-  { key: 'activeLawyers', label: 'Active Lawyers' },
-  { key: 'inactiveLawyers', label: 'Inactive Lawyers' },
+  { key: 'activeBrokers', label: 'Active Brokers' },
+  { key: 'inactiveBrokers', label: 'Inactive Brokers' },
 ];
 
 // Returns true for known test accounts based on email/name patterns
@@ -172,7 +172,7 @@ const Dashboard = () => {
 
       const sb = supabase as unknown as typeof supabase;
 
-      const [stagesRes, dealFlowRowsRes, appUsersRes, ordersInRangeRes, instantlyOverview, calendlyStats] = await Promise.all([
+      const [stagesRes, dealFlowRowsRes, appUsersRes, instantlyOverview, calendlyStats] = await Promise.all([
         sb
           .from('portal_stages')
           .select('id,key,label,pipeline')
@@ -188,13 +188,8 @@ const Dashboard = () => {
           .order('created_at', { ascending: true }),
         sb
           .from('app_users')
-          .select('user_id,email,display_name')
-          .eq('role', 'lawyer'),
-        sb
-          .from('orders')
-          .select('lawyer_id')
-          .gte('created_at', startIso)
-          .lt('created_at', endExclusiveIso),
+          .select('user_id,email,display_name,account_status')
+          .eq('role', 'broker'),
         // Instantly AI: campaign analytics overview for Output + Interested/Connected stats
         fetchInstantlyOverview(startDateStr, endDateStr),
         // Calendly: scheduled (future) and ran (past) meeting counts
@@ -204,11 +199,9 @@ const Dashboard = () => {
       if (cancelled) return;
 
       if (stagesRes.error) {
-        // eslint-disable-next-line no-console
         console.error('[manager-dashboard] portal_stages query error', stagesRes.error);
       }
       if (dealFlowRowsRes.error) {
-        // eslint-disable-next-line no-console
         console.error('[manager-dashboard] lawyer_leads trend query error', dealFlowRowsRes.error);
       }
 
@@ -325,28 +318,22 @@ const Dashboard = () => {
         console.warn('Failed to fetch lawyer_leads count', e);
       }
 
-      // Build test/real lawyer ID sets from app_users for active + inactive calculations
-      const lawyerUsers = (appUsersRes?.data ?? []) as unknown as Array<{
+      // Build test/real broker sets from app_users for active + inactive calculations.
+      const brokerUsers = (appUsersRes?.data ?? []) as unknown as Array<{
         user_id: string;
         email: string | null;
         display_name: string | null;
+        account_status: string | null;
       }>;
-      const testLawyerIds = new Set(
-        lawyerUsers.filter((u) => isTestUser(u.email, u.display_name)).map((u) => u.user_id).filter(Boolean)
-      );
-      const realLawyerIds = new Set(
-        lawyerUsers.filter((u) => !isTestUser(u.email, u.display_name)).map((u) => u.user_id).filter(Boolean)
-      );
-
-      // Active lawyers: placed at least one order in the selected date range (excluding test accounts)
-      const orderRows = (ordersInRangeRes?.data ?? []) as unknown as Array<{ lawyer_id: string }>;
-      const activeInRangeIds = new Set(
-        orderRows.map((r) => r.lawyer_id).filter((id) => id && !testLawyerIds.has(id))
-      );
-      const activeLawyers = activeInRangeIds.size;
-
-      // Inactive lawyers: real lawyers with an account who placed NO order in the selected date range
-      const inactiveLawyers = Array.from(realLawyerIds).filter((id) => !activeInRangeIds.has(id)).length;
+      const realBrokerUsers = brokerUsers.filter((user) => !isTestUser(user.email, user.display_name));
+      const activeBrokers = realBrokerUsers.filter((user) => {
+        const status = (user.account_status ?? '').trim().toLowerCase();
+        return !status || status === 'active';
+      }).length;
+      const inactiveBrokers = realBrokerUsers.filter((user) => {
+        const status = (user.account_status ?? '').trim().toLowerCase();
+        return ['inactive', 'disabled', 'banned', 'suspended'].includes(status);
+      }).length;
 
       setStats({
         output,
@@ -354,8 +341,8 @@ const Dashboard = () => {
         scheduledMeetings,
         ranMeeting,
         signedAgreements,
-        activeLawyers,
-        inactiveLawyers,
+        activeBrokers,
+        inactiveBrokers,
         opportunities,
       });
 
@@ -425,8 +412,8 @@ const Dashboard = () => {
     ranMeeting: { icon: <Video className="h-5 w-5" />, accent: 'darkGreen' },
     signedAgreements: { icon: <FileCheck2 className="h-5 w-5" />, accent: 'purple' },
     opportunities: { icon: <Users className="h-5 w-5" />, accent: 'darkBlue' },
-    activeLawyers: { icon: <UserPlus className="h-5 w-5" />, accent: 'darkOrange' },
-    inactiveLawyers: { icon: <UserMinus className="h-5 w-5" />, accent: 'red' },
+    activeBrokers: { icon: <UserPlus className="h-5 w-5" />, accent: 'darkOrange' },
+    inactiveBrokers: { icon: <UserMinus className="h-5 w-5" />, accent: 'red' },
   };
 
   if (statsLoading) {
